@@ -5,7 +5,12 @@ on:
     # Every hour at :17 UTC. Cron here is always UTC. Tighten or loosen
     # as you like; hourly is a reasonable balance of freshness vs. load.
     - cron: "17 * * * *"
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      test_alert:
+        description: "Send a test alert to verify the notification channel"
+        type: boolean
+        default: false
 
 permissions:
   contents: write   # commit data/ back to the repo
@@ -24,6 +29,8 @@ env:
   TARGET_TERM: "12"         # lease term in months whose rate gets recorded
   # SITE_MAP_URL: ""        # optional: pin a community site map image URL
   DEBUG_PAYLOADS: ""        # set to "1" to upload captured portal JSON as artifact
+  MENTION_USER: "kofikid4"  # @mentioned on alerts; mentions email reliably. Blank to disable.
+  TEST_ALERT: ${{ inputs.test_alert }}
   # BROWSER_HEADED: "1"     # uncomment if the portal starts blocking headless
   TARGET_BEDS: "2"            # comma separated, 0 = studio, e.g. "1,2"
   NOTIFY_EVENTS: "listed"     # any of: listed, price_change, delisted
