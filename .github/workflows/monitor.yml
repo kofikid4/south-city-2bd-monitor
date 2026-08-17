@@ -22,6 +22,7 @@ env:
   PROPERTY_NAME: South City Station
   SOURCE: auto              # auto | eqr (portal only) | eqweb (marketing page only)
   TARGET_TERM: "12"         # lease term in months whose rate gets recorded
+  # SITE_MAP_URL: ""        # optional: pin a community site map image URL
   TARGET_BEDS: "2"            # comma separated, 0 = studio, e.g. "1,2"
   NOTIFY_EVENTS: "listed"     # any of: listed, price_change, delisted
   OFFLINE_CONFIRM_RUNS: "2"   # absent runs before a unit is logged offline
@@ -35,9 +36,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
 
