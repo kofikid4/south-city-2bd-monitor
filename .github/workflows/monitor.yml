@@ -46,6 +46,8 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-python@v6
         with:
@@ -69,11 +71,22 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add data/
-          if ! git diff --cached --quiet; then
-            git commit -m "Data update $(date -u +'%Y-%m-%d %H:%M UTC')"
-            git pull --rebase origin "${GITHUB_REF_NAME}" || true
-            git push
-          fi
+          git diff --cached --quiet && exit 0
+          git commit -m "Data update $(date -u +'%Y-%m-%d %H:%M UTC')"
+          for i in 1 2 3; do
+            git push origin "HEAD:${GITHUB_REF_NAME}" && exit 0
+            echo "Push rejected (remote moved); replaying data commit on top..."
+            git fetch origin "${GITHUB_REF_NAME}"
+            if ! git rebase -X theirs "origin/${GITHUB_REF_NAME}"; then
+              git rebase --abort || true
+              git checkout -B "${GITHUB_REF_NAME}" "origin/${GITHUB_REF_NAME}"
+              echo "Could not reconcile with remote push race."
+              exit 1
+            fi
+            sleep $((i * 5))
+          done
+          echo "Push failed after retries."
+          exit 1
 
       - name: Email alert (optional, needs MAIL_* secrets)
         if: steps.monitor.outputs.notify == 'true' && env.MAIL_USERNAME != ''
@@ -91,7 +104,7 @@ jobs:
 
       - name: Upload debug snapshots
         if: failure() || env.DEBUG_PAYLOADS == '1' 
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: debug-page
           path: debug/
