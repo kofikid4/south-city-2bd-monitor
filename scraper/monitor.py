@@ -322,8 +322,36 @@ def discover_site_map(html: str) -> str:
     return m.group(0) if m else ""
 
 
+def fetch_html_browser() -> str:
+    """Marketing page via headless Chromium, for when requests gets 403'd."""
+    from playwright.sync_api import sync_playwright
+
+    headless = os.environ.get("BROWSER_HEADED") != "1"
+    with sync_playwright() as p:
+        browser = p.chromium.launch(
+            headless=headless,
+            args=["--disable-blink-features=AutomationControlled"])
+        page = browser.new_context(
+            user_agent=HEADERS["User-Agent"], locale="en-US").new_page()
+        page.goto(PROPERTY_URL, wait_until="domcontentloaded", timeout=45000)
+        try:
+            page.wait_for_load_state("networkidle", timeout=15000)
+        except Exception:
+            pass
+        page.wait_for_timeout(2500)
+        html = page.content()
+        browser.close()
+    return html
+
+
 def eqweb_units() -> tuple[list[dict], dict, str]:
-    html = fetch_html()
+    try:
+        html = fetch_html()
+    except RuntimeError as exc:
+        try:
+            html = fetch_html_browser()
+        except Exception:
+            raise exc
     units, expected = parse_page(html)
     exp_all = expected.get("All")
     if not units and (exp_all is None or exp_all > 0):
@@ -338,20 +366,28 @@ def eqweb_units() -> tuple[list[dict], dict, str]:
 # ------------------------------------------- source: application portal
 
 
-def _capture_portal() -> tuple[list, list[str], str]:
+def _capture_portal() -> tuple[list, list[str], str, str]:
     """Render the units list, then every unit detail page, capturing all
-    JSON responses plus the rendered text of each detail page (for the
-    move-in-date fallback). Returns (payloads, detail_texts, list_html)."""
+    JSON responses plus the rendered text of each detail page. Finally
+    load the marketing page in the same browser (a real Chromium session
+    passes bot checks that plain requests fails). Returns
+    (payloads, detail_texts, list_html, marketing_html)."""
     from playwright.sync_api import sync_playwright  # lazy import
 
     payloads: list = []
     detail_texts: list[str] = []
     list_html = ""
+    marketing_html = ""
+    headless = os.environ.get("BROWSER_HEADED") != "1"
     with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True)
+        browser = p.chromium.launch(
+            headless=headless,
+            args=["--disable-blink-features=AutomationControlled"],
+        )
         ctx = browser.new_context(
             user_agent=HEADERS["User-Agent"],
             viewport={"width": 1280, "height": 2000},
+            locale="en-US",
         )
         page = ctx.new_page()
 
@@ -398,8 +434,21 @@ def _capture_portal() -> tuple[list, list[str], str]:
                 detail_texts.append(page.inner_text("body"))
             except Exception:
                 continue
+
+        try:
+            mpage = ctx.new_page()
+            mpage.goto(PROPERTY_URL, wait_until="domcontentloaded",
+                       timeout=45000)
+            try:
+                mpage.wait_for_load_state("networkidle", timeout=15000)
+            except Exception:
+                pass
+            mpage.wait_for_timeout(2500)  # let any bot-check sensor settle
+            marketing_html = mpage.content()
+        except Exception:
+            marketing_html = ""
         browser.close()
-    return payloads, detail_texts, list_html
+    return payloads, detail_texts, list_html, marketing_html
 
 
 def _walk_dicts(obj):
@@ -605,33 +654,55 @@ def _units_from_payloads(payloads: list) -> list[dict]:
     return units
 
 
-def _dates_from_detail_texts(units: list[dict], texts: list[str]):
-    """Fallback: pull 'Move-in 10/6/2026'-style dates from rendered detail
-    pages and attach them to the unit whose number appears on that page."""
+TERM_PRICE_TEXT_RE = re.compile(
+    r"(\d{1,2})\s*(?:months?|mo\.?)\b\D{0,15}\$([\d,]{3,})", re.I)
+
+
+def _enrich_from_detail_texts(units: list[dict], texts: list[str]):
+    """Fallback extraction from rendered detail pages: move-in dates and
+    per-term pricing shown in the UI, attached to the unit whose number
+    appears on that page."""
     for t in texts:
         nums = set(UNIT_IN_TEXT_RE.findall(t))
-        m = MOVEIN_TEXT_RE.search(t)
-        if not m:
-            continue
-        date = norm_date(m.group(1))
         cands = [u for u in units if u["unit_number"] in nums]
-        if len(cands) == 1 and not cands[0]["available"]:
-            cands[0]["available"] = date
+        if len(cands) != 1:
+            continue
+        u = cands[0]
+        m = MOVEIN_TEXT_RE.search(t)
+        if m and not u["available"]:
+            u["available"] = norm_date(m.group(1))
+        if not u["lease_term_months"]:
+            matrix = {}
+            for mo, pr in TERM_PRICE_TEXT_RE.findall(t):
+                mo, pr = int(mo), int(pr.replace(",", ""))
+                if 1 <= mo <= 24 and 300 <= pr <= 30000:
+                    matrix[mo] = pr
+            plausible = len(matrix) >= 2 or any(
+                abs(pr - u["price"]) <= 0.25 * u["price"]
+                for pr in matrix.values())
+            if matrix and plausible:
+                term = min(matrix, key=lambda m_: (abs(m_ - TARGET_TERM), m_))
+                u["lease_term_months"] = str(term)
+                u["price"] = matrix[term]
 
 
-def portal_units() -> list[dict]:
-    payloads, detail_texts, list_html = _capture_portal()
+def portal_units() -> tuple[list[dict], str]:
+    payloads, detail_texts, list_html, marketing_html = _capture_portal()
     units = _units_from_payloads(payloads)
+    if os.environ.get("DEBUG_PAYLOADS") or not units:
+        DEBUG_DIR.mkdir(exist_ok=True)
+        (DEBUG_DIR / "portal_payloads.json").write_text(
+            json.dumps(payloads[:40], indent=2, default=str)[:4_000_000])
+        (DEBUG_DIR / "portal_detail_texts.txt").write_text(
+            "\n\n===== PAGE =====\n\n".join(detail_texts)[:2_000_000])
     if not units:
         DEBUG_DIR.mkdir(exist_ok=True)
         (DEBUG_DIR / "portal_page.html").write_text(list_html or "")
-        (DEBUG_DIR / "portal_payloads.json").write_text(
-            json.dumps(payloads[:20], indent=2, default=str)[:2_000_000])
         raise RuntimeError(
             f"no units recognized in {len(payloads)} JSON payloads; "
             "snapshots saved to debug/")
-    _dates_from_detail_texts(units, detail_texts)
-    return units
+    _enrich_from_detail_texts(units, detail_texts)
+    return units, marketing_html
 
 
 # -------------------------------------------------- cross-source matching
@@ -750,10 +821,14 @@ def acquire_units() -> tuple[list[dict], dict, str, str, list[str]]:
         payloads = raw["__payloads__"] if isinstance(raw, dict) \
             and "__payloads__" in raw else [raw]
         units = _units_from_payloads(payloads)
+        test_texts = os.environ.get("TEST_DETAIL_TEXTS")
+        if test_texts:
+            _enrich_from_detail_texts(
+                units, Path(test_texts).read_text().split("\n=====\n"))
         if test_html:
-            marketing, _, found = eqweb_units()
+            marketing, _ = parse_page(Path(test_html).read_text())
             enrich_from_eqweb(units, marketing)
-            site_map = site_map or found
+            site_map = site_map or discover_site_map(Path(test_html).read_text())
         return units, {}, "portal", site_map, warns
 
     if test_html:
@@ -762,16 +837,7 @@ def acquire_units() -> tuple[list[dict], dict, str, str, list[str]]:
 
     if SOURCE in ("auto", "eqr"):
         try:
-            units = portal_units()
-            if SOURCE == "auto":
-                try:
-                    marketing, _, found = eqweb_units()
-                    enrich_from_eqweb(units, marketing)
-                    site_map = site_map or found
-                except Exception as exc:
-                    warns.append(f"Marketing-page enrichment failed ({exc}); "
-                                 "portal data only this run.")
-            return units, {}, "portal", site_map, warns
+            units, marketing_html = portal_units()
         except SystemExit:
             raise
         except Exception as exc:
@@ -779,6 +845,17 @@ def acquire_units() -> tuple[list[dict], dict, str, str, list[str]]:
                 raise
             warns.append(f"Application portal scrape failed ({exc}); "
                          "fell back to equityapartments.com.")
+        else:
+            if SOURCE == "auto":
+                marketing, _ = parse_page(marketing_html or "")
+                if marketing:
+                    enrich_from_eqweb(units, marketing)
+                    site_map = site_map or discover_site_map(marketing_html)
+                else:
+                    warns.append(
+                        "Marketing page yielded no unit cards in-browser "
+                        "(likely a bot check); enrichment skipped this run.")
+            return units, {}, "portal", site_map, warns
 
     units, expected, found = eqweb_units()
     return units, expected, "eqweb", site_map or found, warns
@@ -801,9 +878,34 @@ OFFLINE_COLS = [
 ]
 
 
+def _repair_row(r: dict) -> dict:
+    """One-time cleanup applied during schema migration: junk status strings
+    that landed in available_date move to status, and rent_psf/building are
+    backfilled where computable."""
+    ad = r.get("available_date", "") or r.get("last_available_date", "")
+    key = "available_date" if "available_date" in r else "last_available_date"
+    if ad and not try_parse_date(ad):
+        if not r.get("status"):
+            r["status"] = ad
+        r[key] = ""
+    for psf_col, price_col in (("rent_psf", "price"),
+                               ("last_rent_psf", "last_price")):
+        if price_col in r and not r.get(psf_col):
+            try:
+                r[psf_col] = f"{int(r[price_col]) / int(r['sqft']):.2f}"
+            except (KeyError, TypeError, ValueError, ZeroDivisionError):
+                pass
+    if not r.get("building"):
+        m = re.match(r"^([A-Za-z0-9]{1,3})-\d{3,5}$",
+                     r.get("unit_number", "") or "")
+        if m:
+            r["building"] = m.group(1)
+    return r
+
+
 def _ensure_csv_schema(path: Path, cols: list[str]):
     """Upgrade an existing CSV in place when columns are added: old rows are
-    kept, new columns filled blank."""
+    kept (repaired where possible), new columns filled blank."""
     if not path.exists():
         return
     with open(path, newline="") as f:
@@ -815,6 +917,7 @@ def _ensure_csv_schema(path: Path, cols: list[str]):
         w = csv.DictWriter(f, fieldnames=cols)
         w.writeheader()
         for r in rows:
+            r = _repair_row(dict(r))
             w.writerow({c: r.get(c, "") for c in cols})
 
 
@@ -996,6 +1099,8 @@ def build_alert(events: list[dict], current: list[dict],
 def main() -> int:
     ts = iso(now_utc())
     DATA_DIR.mkdir(parents=True, exist_ok=True)
+    _ensure_csv_schema(AVAIL_LOG, AVAIL_COLS)
+    _ensure_csv_schema(OFFLINE_LOG, OFFLINE_COLS)
 
     all_units, expected, source, site_map, warnings = acquire_units()
     for u in all_units:
