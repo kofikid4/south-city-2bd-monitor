@@ -1,5 +1,5 @@
 {
-  "last_run_utc": "2026-08-17T20:35:54Z",
+  "last_run_utc": "2026-08-17T20:45:19Z",
   "source": "portal",
   "units": {
     "01-2049": {
@@ -15,7 +15,7 @@
       "fp_image": "",
       "initial_price": 4694,
       "key": "01-2049",
-      "last_seen_utc": "2026-08-17T20:35:54Z",
+      "last_seen_utc": "2026-08-17T20:45:19Z",
       "lease_term_months": "",
       "missing_count": 0,
       "price": 4694,
@@ -38,7 +38,7 @@
       "fp_image": "",
       "initial_price": 4589,
       "key": "01-2088",
-      "last_seen_utc": "2026-08-17T20:35:54Z",
+      "last_seen_utc": "2026-08-17T20:45:19Z",
       "lease_term_months": "",
       "missing_count": 0,
       "price": 4589,
@@ -61,7 +61,7 @@
       "fp_image": "",
       "initial_price": 5113,
       "key": "01-3063",
-      "last_seen_utc": "2026-08-17T20:35:54Z",
+      "last_seen_utc": "2026-08-17T20:45:19Z",
       "lease_term_months": "",
       "missing_count": 0,
       "price": 5113,
