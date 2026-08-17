@@ -44,6 +44,9 @@ UNITS_APP_URL = os.environ.get(
     "UNITS_APP_URL",
     "https://eqr-applications.com/building/south-city-station-2/units",
 )
+# The portal can split one property into several building slugs; list them
+# all comma-separated in UNITS_APP_URL and each is scraped every run.
+PORTAL_URLS = [u.strip() for u in UNITS_APP_URL.split(",") if u.strip()]
 # auto  = portal primary + marketing-page enrichment, full fallback
 # eqr   = portal only (fail loudly if it breaks)
 # eqweb = marketing page only (no browser needed)
@@ -242,6 +245,19 @@ def _stable_sig(text: str) -> str:
     return hashlib.md5(t.encode()).hexdigest()[:8]
 
 
+def _img_url(im) -> str:
+    """Real image URL from an <img>, tolerating lazy-load attributes."""
+    for attr in ("src", "data-src", "data-original", "data-lazy",
+                 "data-lazy-src"):
+        v = im.get(attr) or ""
+        if v and not v.startswith("data:"):
+            return v
+    ss = im.get("srcset") or im.get("data-srcset") or ""
+    if ss:
+        return ss.split(",")[0].strip().split(" ")[0]
+    return ""
+
+
 def _facing_from_text(text: str) -> str:
     dirs = []
     for w in EXPOSURE_RE.findall(text):
@@ -268,22 +284,25 @@ def _card_to_unit(card) -> dict | None:
 
     fp_name, fp_id, fp_image = "", "", ""
     for im in card.find_all("img"):
-        src = im.get("src") or ""
-        m = FP_IMG_RE.search(src)
+        u = _img_url(im)
+        m = FP_IMG_RE.search(u)
         if m:
             fp_id = m.group(1)
             fp_name = (im.get("alt") or "").strip()
-            fp_image = src
+            fp_image = u
             break
     if not fp_name:
         first_img = card.find("img")
         if first_img is not None:
             fp_name = (first_img.get("alt") or "").strip()
-            fp_image = first_img.get("src") or ""
+            fp_image = _img_url(first_img)
+    if fp_image.startswith("//"):
+        fp_image = "https:" + fp_image
 
     return {
         "unit_number": "",
         "building": "",
+        "wing": "",
         "floorplan": fp_name,
         "fp_id": fp_id,
         "fp_image": fp_image,
@@ -402,38 +421,40 @@ def _capture_portal() -> tuple[list, list[str], str, str]:
                 pass
 
         page.on("response", on_response)
-        page.goto(UNITS_APP_URL, wait_until="domcontentloaded", timeout=45000)
-        try:
-            page.wait_for_load_state("networkidle", timeout=20000)
-        except Exception:
-            pass
-        for _ in range(4):
-            page.mouse.wheel(0, 2400)
-            page.wait_for_timeout(600)
-        page.wait_for_timeout(1200)
-        list_html = page.content()
-
-        hrefs = page.eval_on_selector_all(
-            "a", "els => els.map(e => e.href)")
-        base = UNITS_APP_URL.rstrip("/")
-        detail_urls = []
-        for h in hrefs or []:
-            if not h:
-                continue
-            h = h.split("#")[0]
-            if h.startswith(base + "/") and h != base and h not in detail_urls:
-                detail_urls.append(h)
-        for url in detail_urls[:MAX_DETAIL_PAGES]:
+        for purl in PORTAL_URLS:
+            page.goto(purl, wait_until="domcontentloaded", timeout=45000)
             try:
-                page.goto(url, wait_until="domcontentloaded", timeout=30000)
-                try:
-                    page.wait_for_load_state("networkidle", timeout=12000)
-                except Exception:
-                    pass
-                page.wait_for_timeout(600)
-                detail_texts.append(page.inner_text("body"))
+                page.wait_for_load_state("networkidle", timeout=20000)
             except Exception:
-                continue
+                pass
+            for _ in range(4):
+                page.mouse.wheel(0, 2400)
+                page.wait_for_timeout(600)
+            page.wait_for_timeout(1200)
+            list_html = page.content()
+
+            hrefs = page.eval_on_selector_all(
+                "a", "els => els.map(e => e.href)")
+            base = purl.rstrip("/")
+            detail_urls = []
+            for h in hrefs or []:
+                if not h:
+                    continue
+                h = h.split("#")[0]
+                if h.startswith(base + "/") and h != base                         and h not in detail_urls:
+                    detail_urls.append(h)
+            for url in detail_urls[:MAX_DETAIL_PAGES]:
+                try:
+                    page.goto(url, wait_until="domcontentloaded",
+                              timeout=30000)
+                    try:
+                        page.wait_for_load_state("networkidle", timeout=12000)
+                    except Exception:
+                        pass
+                    page.wait_for_timeout(600)
+                    detail_texts.append(page.inner_text("body"))
+                except Exception:
+                    continue
 
         try:
             mpage = ctx.new_page()
@@ -598,6 +619,7 @@ def _json_unit(d: dict) -> dict | None:
     return {
         "unit_number": unit_no,
         "building": "",
+        "wing": "",
         "floorplan": str(plan) if plan not in (None, "") else "",
         "fp_id": "",
         "fp_image": "",
@@ -739,16 +761,50 @@ def enrich_from_eqweb(portal: list[dict], marketing: list[dict]):
                 u["floor"] = w["floor"]
 
 
-def derive_building_floor(u: dict):
-    """EQR unit numbers look like 01-2049: building 01, floor = first digit
-    of the unit part. Used to fill blanks; never overrides source data."""
-    m = re.match(r"^([A-Za-z0-9]{1,3})-(\d{3,5})$", u.get("unit_number") or "")
+# Read off the South City Station community site plan. Unit numbers are
+# floor-first (2049 = floor 2, stack 49); the stack number determines the
+# physical building and wing. The 01- prefix is an EQR property code, not
+# a building. Stacks 14-67 are the west building (Costco Entry Dr /
+# McLellan Dr / El Camino Real block, leasing center), 68-121 the east
+# building (BART Station Access Rd block), 1-13 the standalone garages.
+STACK_WINGS = [
+    (1, 13, "Garages", "standalone garage row north of the west building"),
+    (14, 19, "West", "north side, by the leasing center and garage row"),
+    (20, 25, "West", "inner east wing, garage-adjacent"),
+    (26, 30, "West", "inner south wing, garage-adjacent"),
+    (31, 31, "West", "northwest corner on Costco Entry Dr"),
+    (32, 35, "West", "northeast corner on McLellan Dr, by fitness"),
+    (36, 41, "West", "east edge along McLellan Dr"),
+    (42, 47, "West", "southeast edge along El Camino Real"),
+    (48, 56, "West", "south courtyard cluster by the spa"),
+    (57, 67, "West", "southwest edge along Costco Entry Dr"),
+    (68, 74, "East", "west edge along McLellan Dr"),
+    (75, 83, "East", "north edge along BART Station Access Rd"),
+    (84, 88, "East", "inner east wing, garage-adjacent"),
+    (89, 93, "East", "inner south wing, by mail and fitness"),
+    (94, 99, "East", "northeast outer corner"),
+    (100, 107, "East", "east outer edge"),
+    (108, 110, "East", "southeast corner"),
+    (111, 121, "East", "south courtyard cluster by the spa"),
+]
+
+
+def derive_location(u: dict):
+    """Fill building, wing, and floor from the unit number using the site
+    plan mapping. Building/wing are deterministic derived data and always
+    recomputed; floor only fills a blank (portal floor wins)."""
+    m = re.match(r"^(?:[A-Za-z0-9]{1,3}-)?([1-4])(\d{2,3})$",
+                 str(u.get("unit_number") or ""))
     if not m:
         return
-    if not u.get("building"):
-        u["building"] = m.group(1)
+    floor, stack = m.group(1), int(m.group(2))
+    for lo, hi, bldg, wing in STACK_WINGS:
+        if lo <= stack <= hi:
+            u["building"] = bldg
+            u["wing"] = wing
+            break
     if not u.get("floor"):
-        u["floor"] = m.group(2)[0]
+        u["floor"] = floor
 
 
 # ----------------------------------------------------------- keys / diff
@@ -809,10 +865,14 @@ def remap_after_source_switch(known: dict, units: list[dict]) -> dict:
 # ------------------------------------------------------------ acquisition
 
 
-def acquire_units() -> tuple[list[dict], dict, str, str, list[str]]:
-    """Returns (units, expected_tab_counts, source, site_map_url, warnings)."""
+def acquire_units() -> tuple[list[dict], dict, str, str, list[str], int | None]:
+    """Returns (units, expected_tab_counts, source, site_map_url, warnings,
+    marketing_target_count). The last item drives the coverage guard: when
+    the marketing page shows more target-bed units than the portal did, the
+    portal URL(s) may cover only part of the property."""
     warns: list[str] = []
     site_map = SITE_MAP_URL
+    mkt_target: int | None = None
     test_json = os.environ.get("TEST_JSON")
     test_html = os.environ.get("TEST_HTML")
 
@@ -826,14 +886,16 @@ def acquire_units() -> tuple[list[dict], dict, str, str, list[str]]:
             _enrich_from_detail_texts(
                 units, Path(test_texts).read_text().split("\n=====\n"))
         if test_html:
-            marketing, _ = parse_page(Path(test_html).read_text())
+            html = Path(test_html).read_text()
+            marketing, _ = parse_page(html)
+            mkt_target = sum(1 for m in marketing if m["beds"] in TARGET_BEDS)
             enrich_from_eqweb(units, marketing)
-            site_map = site_map or discover_site_map(Path(test_html).read_text())
-        return units, {}, "portal", site_map, warns
+            site_map = site_map or discover_site_map(html)
+        return units, {}, "portal", site_map, warns, mkt_target
 
     if test_html:
         units, expected, found = eqweb_units()
-        return units, expected, "eqweb", site_map or found, warns
+        return units, expected, "eqweb", site_map or found, warns, None
 
     if SOURCE in ("auto", "eqr"):
         try:
@@ -849,29 +911,31 @@ def acquire_units() -> tuple[list[dict], dict, str, str, list[str]]:
             if SOURCE == "auto":
                 marketing, _ = parse_page(marketing_html or "")
                 if marketing:
+                    mkt_target = sum(
+                        1 for m in marketing if m["beds"] in TARGET_BEDS)
                     enrich_from_eqweb(units, marketing)
                     site_map = site_map or discover_site_map(marketing_html)
                 else:
                     warns.append(
                         "Marketing page yielded no unit cards in-browser "
                         "(likely a bot check); enrichment skipped this run.")
-            return units, {}, "portal", site_map, warns
+            return units, {}, "portal", site_map, warns, mkt_target
 
     units, expected, found = eqweb_units()
-    return units, expected, "eqweb", site_map or found, warns
+    return units, expected, "eqweb", site_map or found, warns, None
 
 
 # ----------------------------------------------------------------- logging
 
 
 AVAIL_COLS = [
-    "logged_utc", "event", "unit_key", "unit_number", "building", "floorplan",
+    "logged_utc", "event", "unit_key", "unit_number", "building", "wing", "floorplan",
     "beds", "baths", "sqft", "floor", "facing", "price", "prev_price",
     "rent_psf", "lease_term_months", "status", "available_date",
     "first_seen_utc", "source", "url",
 ]
 OFFLINE_COLS = [
-    "delisted_utc", "unit_key", "unit_number", "building", "floorplan",
+    "delisted_utc", "unit_key", "unit_number", "building", "wing", "floorplan",
     "beds", "baths", "sqft", "floor", "facing", "last_price", "initial_price",
     "price_change_while_listed", "last_rent_psf", "last_available_date",
     "first_seen_utc", "last_seen_utc", "days_listed", "source", "url",
@@ -935,6 +999,7 @@ def log_availability(event: str, u: dict, ts: str, prev_price=""):
     append_csv(AVAIL_LOG, AVAIL_COLS, {
         "logged_utc": ts, "event": event, "unit_key": u["key"],
         "unit_number": u["unit_number"], "building": u.get("building", ""),
+        "wing": u.get("wing", ""),
         "floorplan": u["floorplan"], "beds": u["beds"], "baths": u["baths"],
         "sqft": u["sqft"], "floor": u["floor"], "facing": u.get("facing", ""),
         "price": u["price"], "prev_price": prev_price,
@@ -956,6 +1021,7 @@ def log_offline(u: dict, ts: str):
     append_csv(OFFLINE_LOG, OFFLINE_COLS, {
         "delisted_utc": ts, "unit_key": u["key"],
         "unit_number": u["unit_number"], "building": u.get("building", ""),
+        "wing": u.get("wing", ""),
         "floorplan": u["floorplan"], "beds": u["beds"], "baths": u["baths"],
         "sqft": u["sqft"], "floor": u["floor"], "facing": u.get("facing", ""),
         "last_price": u["price"],
@@ -1005,10 +1071,23 @@ def units_table(units: list[dict]) -> str:
     return "\n".join(lines) + "\n"
 
 
+def locations_block(units: list[dict]) -> str:
+    lines = []
+    for u in sorted(units, key=lambda x: x["price"]):
+        if u.get("wing"):
+            lines.append(f"- **{u['unit_number'] or u.get('key','?')}**: "
+                         f"{u.get('building','')} building, floor {u['floor']}"
+                         + (f", faces {u['facing']}" if u.get("facing") else "")
+                         + f" — {u['wing']}")
+    return ("**Where they are** (see site map below):\n"
+            + "\n".join(lines) + "\n") if lines else ""
+
+
 def _unit_line(u: dict) -> str:
     bits = [u["unit_number"] or u.get("key", "?")]
     if u.get("building"):
-        bits.append(f"Bldg {u['building']}")
+        bits.append(f"{u['building']} bldg"
+                    + (f" ({u['wing']})" if u.get("wing") else ""))
     if u["floor"]:
         bits.append(f"Fl {u['floor']}")
     if u.get("facing"):
@@ -1024,11 +1103,40 @@ def _unit_line(u: dict) -> str:
     return line
 
 
+def load_legend() -> dict:
+    p = DATA_DIR / "building_legend.json"
+    try:
+        return json.loads(p.read_text()) if p.exists() else {}
+    except Exception:
+        return {}
+
+
 def map_footer(site_map: str) -> str:
+    lines = []
+    legend = load_legend()
+    if legend:
+        lines.append("**Building legend**:")
+        for k in sorted(legend):
+            if k.lower() == "note":
+                lines.append(f"- {legend[k]}")
+            else:
+                lines.append(f"- {k} building: {legend[k]}")
+        lines.append("")
+    repo = os.environ.get("GITHUB_REPOSITORY")
+    branch = os.environ.get("GITHUB_REF_NAME", "main")
+    if repo and (DATA_DIR / "community_map.png").exists():
+        site_map = (f"https://raw.githubusercontent.com/{repo}/{branch}"
+                    f"/data/community_map.png")
     if site_map:
-        return (f"**Community site map** (locate by building/floor/facing):\n\n"
-                f"![Site map]({site_map})\n\n[Full gallery]({GALLERY_URL})")
-    return f"[Community map and gallery]({GALLERY_URL})"
+        lines.append("**Community site map** (unit numbers are floor + "
+                     "stack; find the stack on the plan):")
+        lines.append("")
+        lines.append(f"![Site map]({site_map})")
+        lines.append("")
+        lines.append(f"[Full gallery]({GALLERY_URL})")
+    else:
+        lines.append(f"[Community map and gallery]({GALLERY_URL})")
+    return "\n".join(lines)
 
 
 def create_github_issue(title: str, body: str) -> bool:
@@ -1050,8 +1158,16 @@ def create_github_issue(title: str, body: str) -> bool:
         payload.pop("labels")
         r = requests.post(api, headers=headers, json=payload, timeout=30)
     ok = r.status_code == 201
-    print(f"GitHub issue: {'created' if ok else 'failed ' + str(r.status_code)}")
+    if ok:
+        print("GitHub issue: created")
+    else:
+        print(f"GitHub issue: FAILED {r.status_code}: {r.text[:300]}")
     return ok
+
+
+def _with_mention(body: str) -> str:
+    user = os.environ.get("MENTION_USER", "").strip().lstrip("@")
+    return body + (f"\n\ncc @{user}" if user else "")
 
 
 def build_alert(events: list[dict], current: list[dict],
@@ -1081,7 +1197,8 @@ def build_alert(events: list[dict], current: list[dict],
             line += f" (was {money(e['prev_price'])})"
         body.append(line)
     body += ["", f"### All {beds_desc} units currently listed", "",
-             units_table(current), "", map_footer(site_map), "",
+             units_table(current), "", locations_block(current), "",
+             map_footer(site_map), "",
              f"[Application portal]({UNITS_APP_URL}) | "
              f"[Listing page]({PROPERTY_URL})"]
     repo = os.environ.get("GITHUB_REPOSITORY")
@@ -1090,7 +1207,141 @@ def build_alert(events: list[dict], current: list[dict],
         base = f"https://github.com/{repo}/blob/{branch}/data"
         body.append(f" | [Availability log]({base}/availability_log.csv)"
                     f" | [Offline log]({base}/offline_log.csv)")
+        body.append("\n### Price history\n")
+        body.append(f"![Price history](https://raw.githubusercontent.com/"
+                    f"{repo}/{branch}/data/price_history.png)")
     return title, "\n".join(body) + "\n"
+
+
+def backfill_csv_from_state(state: dict):
+    """One-time-ish repair: fill blanks in historical availability rows
+    (facing, floorplan, move-in date, building) from the current state,
+    keyed by unit. Idempotent; rewrites only when something changed."""
+    if not AVAIL_LOG.exists():
+        return
+    units = state.get("units", {})
+    with open(AVAIL_LOG, newline="") as f:
+        reader = csv.DictReader(f)
+        cols = reader.fieldnames or []
+        rows = list(reader)
+    changed = False
+    for r in rows:
+        loc = {"unit_number": r.get("unit_number", ""), "floor": r.get("floor")}
+        derive_location(loc)
+        for f in ("building", "wing"):
+            if f in r and loc.get(f) and r.get(f) != loc[f]:
+                r[f] = loc[f]
+                changed = True
+        su = units.get(r.get("unit_key", ""))
+        if not su:
+            continue
+        for src_f, dst_f in (("facing", "facing"), ("floorplan", "floorplan"),
+                             ("available", "available_date")):
+            if dst_f in r and not r.get(dst_f) and su.get(src_f):
+                r[dst_f] = str(su[src_f])
+                changed = True
+    if changed:
+        with open(AVAIL_LOG, "w", newline="") as f:
+            w = csv.DictWriter(f, fieldnames=cols)
+            w.writeheader()
+            w.writerows(rows)
+        print("Backfilled historical rows from state.")
+
+
+def generate_chart(state: dict) -> str:
+    """Step chart of asking rent and $/SF over time for target-bed units,
+    built from the event logs. X marks a delisting. Saved as
+    data/price_history.png; returns the path or '' if skipped."""
+    try:
+        import matplotlib
+        matplotlib.use("Agg")
+        import matplotlib.dates as mdates
+        import matplotlib.pyplot as plt
+        from matplotlib.ticker import StrMethodFormatter
+    except Exception as exc:
+        print(f"Chart skipped (matplotlib unavailable: {exc})")
+        return ""
+
+    series: dict[str, dict] = {}
+
+    def bucket(key, sqft):
+        s = series.setdefault(key, {"pts": [], "sqft": None, "end": None})
+        if sqft:
+            s["sqft"] = sqft
+        return s
+
+    if AVAIL_LOG.exists():
+        with open(AVAIL_LOG, newline="") as f:
+            for r in csv.DictReader(f):
+                try:
+                    if int(r["beds"]) not in TARGET_BEDS:
+                        continue
+                    s = bucket(r["unit_key"], int(r["sqft"] or 0))
+                    s["pts"].append((parse_iso(r["logged_utc"]),
+                                     int(r["price"])))
+                except (KeyError, TypeError, ValueError):
+                    continue
+    if OFFLINE_LOG.exists():
+        with open(OFFLINE_LOG, newline="") as f:
+            for r in csv.DictReader(f):
+                try:
+                    if int(r["beds"]) not in TARGET_BEDS:
+                        continue
+                    if r["unit_key"] in series:
+                        series[r["unit_key"]]["end"] = (
+                            parse_iso(r["delisted_utc"]),
+                            int(r["last_price"]))
+                except (KeyError, TypeError, ValueError):
+                    continue
+
+    nowdt = now_utc()
+    for key, s in series.items():
+        if s["end"] is not None:
+            s["pts"].append(s["end"])
+        else:
+            su = state.get("units", {}).get(key)
+            if su:
+                s["pts"].append((nowdt, su["price"]))
+    series = {k: s for k, s in series.items() if s["pts"]}
+    if not series:
+        return ""
+
+    fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True, figsize=(10, 7))
+    for key in sorted(series):
+        s = series[key]
+        pts = sorted(s["pts"], key=lambda p: p[0])
+        ts, ps = [p[0] for p in pts], [p[1] for p in pts]
+        line, = ax1.step(ts, ps, where="post", marker="o",
+                         markersize=4, label=key)
+        color = line.get_color()
+        if s["sqft"]:
+            ax2.step(ts, [p / s["sqft"] for p in ps], where="post",
+                     marker="o", markersize=4, color=color, label=key)
+        if s["end"] is not None:
+            ax1.plot([s["end"][0]], [s["end"][1]], marker="X",
+                     markersize=11, color=color)
+            if s["sqft"]:
+                ax2.plot([s["end"][0]], [s["end"][1] / s["sqft"]],
+                         marker="X", markersize=11, color=color)
+
+    beds_desc = "/".join(str(b) for b in sorted(TARGET_BEDS))
+    ax1.set_title(f"{PROPERTY_NAME} {beds_desc}BR asking rents "
+                  f"(X = delisted) — updated {nowdt:%Y-%m-%d %H:%M} UTC")
+    ax1.set_ylabel("Asking rent ($/mo)")
+    ax1.yaxis.set_major_formatter(StrMethodFormatter("${x:,.0f}"))
+    ax1.grid(alpha=0.3)
+    ax1.legend(fontsize=8)
+    ax2.set_ylabel("$/SF/mo")
+    ax2.yaxis.set_major_formatter(StrMethodFormatter("${x:,.2f}"))
+    ax2.grid(alpha=0.3)
+    loc = mdates.AutoDateLocator()
+    ax2.xaxis.set_major_locator(loc)
+    ax2.xaxis.set_major_formatter(mdates.ConciseDateFormatter(loc))
+    fig.tight_layout()
+    out = DATA_DIR / "price_history.png"
+    fig.savefig(out, dpi=150)
+    plt.close(fig)
+    return str(out)
 
 
 # ------------------------------------------------------------------- main
@@ -1102,9 +1353,9 @@ def main() -> int:
     _ensure_csv_schema(AVAIL_LOG, AVAIL_COLS)
     _ensure_csv_schema(OFFLINE_LOG, OFFLINE_COLS)
 
-    all_units, expected, source, site_map, warnings = acquire_units()
+    all_units, expected, source, site_map, warnings, mkt_target = acquire_units()
     for u in all_units:
-        derive_building_floor(u)
+        derive_location(u)
     assign_keys(all_units)
     target = [u for u in all_units if u["beds"] in TARGET_BEDS]
     for u in target:
@@ -1126,6 +1377,14 @@ def main() -> int:
             f"Parsed {len(target)} target units but page reports {exp_target}; "
             "skipping offline detection this run."
         )
+    if mkt_target is not None and mkt_target > len(target):
+        trust_absence = False
+        warnings.append(
+            f"Marketing page shows {mkt_target} target-bed units but the "
+            f"portal returned {len(target)}. The portal URL(s) may cover only "
+            "part of the property; check eqr-applications.com for sibling "
+            "building slugs and add them comma-separated to UNITS_APP_URL. "
+            "Offline detection skipped this run.")
 
     state = (json.loads(STATE_FILE.read_text())
              if STATE_FILE.exists() else {"version": 1, "units": {}})
@@ -1143,8 +1402,8 @@ def main() -> int:
     events: list[dict] = []
 
     carry = ("price", "available", "floor", "sqft", "baths", "floorplan",
-             "fp_id", "fp_image", "unit_number", "building", "facing",
-             "status", "lease_term_months", "source")
+             "fp_id", "fp_image", "unit_number", "building", "wing",
+             "facing", "status", "lease_term_months", "source")
     for key, u in current.items():
         if key in known:
             su = known[key]
@@ -1176,11 +1435,30 @@ def main() -> int:
 
     state["last_run_utc"] = ts
     STATE_FILE.write_text(json.dumps(state, indent=2, sort_keys=True) + "\n")
+    backfill_csv_from_state(state)
+    chart_path = generate_chart(state)
 
+    test_alert = os.environ.get("TEST_ALERT", "").lower() in ("1", "true")
     notify_events = [e for e in events if e["type"] in NOTIFY_EVENTS]
-    if notify_events:
+    if test_alert:
+        beds_lbl = "/".join(str(b) for b in sorted(TARGET_BEDS))
+        title = (f"[TEST] {PROPERTY_NAME} alert channel check: "
+                 f"{len(current)} {beds_lbl}BR currently listed")
+        body = _with_mention(
+            "Manually triggered test alert. If this reached you as an email "
+            "or notification, the channel works; real alerts will look the "
+            "same and fire only on actual events.\n\n"
+            "### Currently listed\n\n"
+            + units_table(list(current.values())) + "\n"
+            + locations_block(list(current.values())) + "\n"
+            + map_footer(site_map))
+        ALERT_FILE.write_text(f"# {title}\n\n{body}")
+        create_github_issue(title, body)
+        gh_output(notify="true", subject=title)
+    elif notify_events:
         title, body = build_alert(notify_events, list(current.values()),
                                   site_map)
+        body = _with_mention(body)
         ALERT_FILE.write_text(f"# {title}\n\n{body}")
         create_github_issue(title, body)
         gh_output(notify="true", subject=title)
@@ -1198,7 +1476,13 @@ def main() -> int:
     else:
         md.append("No changes this run.")
     md += ["", f"Currently listed {beds_desc}-bed units:", "",
-           units_table(list(current.values())), "", map_footer(site_map)]
+           units_table(list(current.values())), "",
+           locations_block(list(current.values())), "", map_footer(site_map)]
+    repo = os.environ.get("GITHUB_REPOSITORY")
+    if chart_path and repo:
+        branch = os.environ.get("GITHUB_REF_NAME", "main")
+        md.append(f"\n[Price history chart](https://github.com/{repo}/"
+                  f"blob/{branch}/data/price_history.png)")
     step_summary("\n".join(md))
 
     print(f"OK [{source}]: parsed {len(all_units)} units total, "
