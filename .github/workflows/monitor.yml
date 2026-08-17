@@ -23,6 +23,8 @@ env:
   SOURCE: auto              # auto | eqr (portal only) | eqweb (marketing page only)
   TARGET_TERM: "12"         # lease term in months whose rate gets recorded
   # SITE_MAP_URL: ""        # optional: pin a community site map image URL
+  DEBUG_PAYLOADS: ""        # set to "1" to upload captured portal JSON as artifact
+  # BROWSER_HEADED: "1"     # uncomment if the portal starts blocking headless
   TARGET_BEDS: "2"            # comma separated, 0 = studio, e.g. "1,2"
   NOTIFY_EVENTS: "listed"     # any of: listed, price_change, delisted
   OFFLINE_CONFIRM_RUNS: "2"   # absent runs before a unit is logged offline
@@ -51,7 +53,9 @@ jobs:
         id: monitor
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: python scraper/monitor.py
+        run: |
+          command -v xvfb-run >/dev/null 2>&1 || sudo apt-get install -y xvfb >/dev/null
+          xvfb-run -a python scraper/monitor.py
 
       - name: Commit data
         run: |
@@ -78,8 +82,8 @@ jobs:
           subject: ${{ steps.monitor.outputs.subject }}
           body: file://alert.md
 
-      - name: Upload page snapshot if parsing failed
-        if: failure()
+      - name: Upload debug snapshots
+        if: failure() || env.DEBUG_PAYLOADS == '1' 
         uses: actions/upload-artifact@v4
         with:
           name: debug-page
