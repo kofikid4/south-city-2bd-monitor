@@ -1,0 +1,4 @@
+logged_utc,event,unit_key,unit_number,floorplan,beds,baths,sqft,floor,price,prev_price,lease_term_months,available_date,first_seen_utc,source,url
+2026-08-17T20:17:10Z,listed,01-3063,01-3063,,2,2,1266,3,5113,,,renovating,2026-08-17T20:17:10Z,portal,https://www.equityapartments.com/san-francisco-bay/south-san-francisco/south-city-station-apartments
+2026-08-17T20:17:10Z,listed,01-2088,01-2088,,2,2,1054,2,4589,,,available-,2026-08-17T20:17:10Z,portal,https://www.equityapartments.com/san-francisco-bay/south-san-francisco/south-city-station-apartments
+2026-08-17T20:17:10Z,listed,01-2049,01-2049,,2,2,1054,2,4694,,,renovating,2026-08-17T20:17:10Z,portal,https://www.equityapartments.com/san-francisco-bay/south-san-francisco/south-city-station-apartments
