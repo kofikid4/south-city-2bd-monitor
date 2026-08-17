@@ -1,0 +1,86 @@
+name: Apartment monitor
+
+on:
+  schedule:
+    # Every hour at :17 UTC. Cron here is always UTC. Tighten or loosen
+    # as you like; hourly is a reasonable balance of freshness vs. load.
+    - cron: "17 * * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write   # commit data/ back to the repo
+  issues: write     # open alert issues
+
+concurrency:
+  group: apartment-monitor
+  cancel-in-progress: false
+
+env:
+  # ---- knobs ----
+  PROPERTY_URL: https://www.equityapartments.com/san-francisco-bay/south-san-francisco/south-city-station-apartments
+  UNITS_APP_URL: https://eqr-applications.com/building/south-city-station-2/units
+  PROPERTY_NAME: South City Station
+  SOURCE: auto              # auto | eqr (portal only) | eqweb (marketing page only)
+  TARGET_TERM: "12"         # lease term in months whose rate gets recorded
+  TARGET_BEDS: "2"            # comma separated, 0 = studio, e.g. "1,2"
+  NOTIFY_EVENTS: "listed"     # any of: listed, price_change, delisted
+  OFFLINE_CONFIRM_RUNS: "2"   # absent runs before a unit is logged offline
+  # ---- optional email (leave secrets unset to skip) ----
+  MAIL_USERNAME: ${{ secrets.MAIL_USERNAME }}
+  MAIL_PASSWORD: ${{ secrets.MAIL_PASSWORD }}
+  MAIL_TO: ${{ secrets.MAIL_TO }}
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          playwright install --with-deps chromium
+
+      - name: Check availability
+        id: monitor
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python scraper/monitor.py
+
+      - name: Commit data
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/
+          if ! git diff --cached --quiet; then
+            git commit -m "Data update $(date -u +'%Y-%m-%d %H:%M UTC')"
+            git pull --rebase origin "${GITHUB_REF_NAME}" || true
+            git push
+          fi
+
+      - name: Email alert (optional, needs MAIL_* secrets)
+        if: steps.monitor.outputs.notify == 'true' && env.MAIL_USERNAME != ''
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 465
+          secure: true
+          username: ${{ env.MAIL_USERNAME }}
+          password: ${{ env.MAIL_PASSWORD }}
+          to: ${{ env.MAIL_TO }}
+          from: Apartment Monitor
+          subject: ${{ steps.monitor.outputs.subject }}
+          body: file://alert.md
+
+      - name: Upload page snapshot if parsing failed
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: debug-page
+          path: debug/
+          if-no-files-found: ignore
