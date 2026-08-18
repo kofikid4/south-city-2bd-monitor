@@ -76,6 +76,7 @@ AVAIL_LOG = DATA_DIR / "availability_log.csv"
 OFFLINE_LOG = DATA_DIR / "offline_log.csv"
 ALERT_FILE = Path("alert.md")
 ALERT_HTML = Path("alert.html")  # bordered-table version for direct email
+EMAIL_MAP = DATA_DIR / "community_map_email.jpg"  # inline-friendly site map
 
 EVENT_LABELS = {"listed": "New", "price_change": "Repriced",
                 "delisted": "Delisted"}
@@ -1156,6 +1157,25 @@ def map_footer(site_map: str) -> str:
     return "\n".join(lines)
 
 
+def ensure_email_map():
+    """Create an email-sized JPEG of the site map once (the full PNG is too
+    heavy to inline in every email). Committed like any other data file."""
+    src_map = DATA_DIR / "community_map.png"
+    if not src_map.exists() or EMAIL_MAP.exists():
+        return
+    try:
+        from PIL import Image  # ships with matplotlib
+        im = Image.open(src_map).convert("RGB")
+        width = 1400
+        if im.width > width:
+            im = im.resize((width, int(im.height * width / im.width)),
+                           Image.LANCZOS)
+        im.save(EMAIL_MAP, "JPEG", quality=82, optimize=True)
+        print("Generated email-sized site map.")
+    except Exception as exc:
+        print(f"Email map generation skipped: {exc}")
+
+
 def build_alert_html(title: str, intro_html: str, current: list[dict],
                      site_map: str) -> str:
     """Self-contained HTML email body. Inline styles only (Gmail strips
@@ -1197,11 +1217,22 @@ def build_alert_html(title: str, intro_html: str, current: list[dict],
                  f"</a> &middot; "
                  f'<a href="{UNITS_APP_URL.split(",")[0]}">Apply portal</a>'
                  f' &middot; <a href="{PROPERTY_URL}">Listing page</a></p>')
-        if (DATA_DIR / "community_map.png").exists():
-            map_link = (f'<p style="font-size:14px"><a href='
-                        f'"https://raw.githubusercontent.com/{repo}/{branch}'
-                        f'/data/community_map.png">Community site map</a> '
-                        f"(unit numbers are floor + stack)</p>")
+        base_raw = f"https://raw.githubusercontent.com/{repo}/{branch}/data"
+        if EMAIL_MAP.exists():
+            map_link = (
+                f'<p style="font-size:14px;margin:12px 0 4px">'
+                f"<b>Community site map</b> (unit numbers are floor + "
+                f"stack)</p>"
+                f'<p style="margin:0"><img src="{base_raw}/'
+                f'community_map_email.jpg" style="max-width:100%;'
+                f'height:auto" alt="Community site map"/></p>'
+                f'<p style="font-size:13px;margin:4px 0 0"><a href='
+                f'"{base_raw}/community_map.png">Full-resolution map</a></p>')
+        elif (DATA_DIR / "community_map.png").exists():
+            map_link = (
+                f'<p style="margin:12px 0 0"><img src="{base_raw}/'
+                f'community_map.png" style="max-width:100%;height:auto" '
+                f'alt="Community site map"/></p>')
     font = ("font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,"
             "sans-serif;color:#111;")
     return (f'<div style="{font}">'
@@ -1526,6 +1557,7 @@ def main() -> int:
     state["last_run_utc"] = ts
     STATE_FILE.write_text(json.dumps(state, indent=2, sort_keys=True) + "\n")
     backfill_csv_from_state(state)
+    ensure_email_map()
     chart_path = generate_chart(state)
 
     test_alert = os.environ.get("TEST_ALERT", "").lower() in ("1", "true")
