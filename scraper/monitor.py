@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import csv
 import hashlib
+from html import escape as hesc
 import json
 import os
 import re
@@ -74,6 +75,10 @@ STATE_FILE = DATA_DIR / "state.json"
 AVAIL_LOG = DATA_DIR / "availability_log.csv"
 OFFLINE_LOG = DATA_DIR / "offline_log.csv"
 ALERT_FILE = Path("alert.md")
+ALERT_HTML = Path("alert.html")  # bordered-table version for direct email
+
+EVENT_LABELS = {"listed": "New", "price_change": "Repriced",
+                "delisted": "Delisted"}
 
 HEADERS = {
     "User-Agent": (
@@ -345,11 +350,8 @@ def fetch_html_browser() -> str:
     """Marketing page via headless Chromium, for when requests gets 403'd."""
     from playwright.sync_api import sync_playwright
 
-    headless = os.environ.get("BROWSER_HEADED") != "1"
     with sync_playwright() as p:
-        browser = p.chromium.launch(
-            headless=headless,
-            args=["--disable-blink-features=AutomationControlled"])
+        browser = _launch_browser(p)
         page = browser.new_context(
             user_agent=HEADERS["User-Agent"], locale="en-US").new_page()
         page.goto(PROPERTY_URL, wait_until="domcontentloaded", timeout=45000)
@@ -385,6 +387,25 @@ def eqweb_units() -> tuple[list[dict], dict, str]:
 # ------------------------------------------- source: application portal
 
 
+def _launch_browser(p):
+    """Launch Chrome/Chromium. BROWSER_CHANNEL=chrome (default) uses the
+    system Chrome preinstalled on GitHub runners, skipping the multi-minute
+    playwright browser download. Falls back to the bundled Chromium for
+    local machines without Chrome. BROWSER_HEADED=1 runs headed (needs
+    xvfb on a runner), which defeats stricter bot checks."""
+    headless = os.environ.get("BROWSER_HEADED") != "1"
+    args = ["--disable-blink-features=AutomationControlled"]
+    channel = os.environ.get("BROWSER_CHANNEL", "chrome").strip()
+    if channel:
+        try:
+            return p.chromium.launch(channel=channel, headless=headless,
+                                     args=args)
+        except Exception as exc:
+            print(f"Channel '{channel}' unavailable ({exc}); "
+                  "using bundled Chromium.")
+    return p.chromium.launch(headless=headless, args=args)
+
+
 def _capture_portal() -> tuple[list, list[str], str, str]:
     """Render the units list, then every unit detail page, capturing all
     JSON responses plus the rendered text of each detail page. Finally
@@ -397,12 +418,8 @@ def _capture_portal() -> tuple[list, list[str], str, str]:
     detail_texts: list[str] = []
     list_html = ""
     marketing_html = ""
-    headless = os.environ.get("BROWSER_HEADED") != "1"
     with sync_playwright() as p:
-        browser = p.chromium.launch(
-            headless=headless,
-            args=["--disable-blink-features=AutomationControlled"],
-        )
+        browser = _launch_browser(p)
         ctx = browser.new_context(
             user_agent=HEADERS["User-Agent"],
             viewport={"width": 1280, "height": 2000},
@@ -1139,6 +1156,80 @@ def map_footer(site_map: str) -> str:
     return "\n".join(lines)
 
 
+def build_alert_html(title: str, intro_html: str, current: list[dict],
+                     site_map: str) -> str:
+    """Self-contained HTML email body. Inline styles only (Gmail strips
+    <style> blocks); solid black cell borders for mobile readability."""
+    td = "border:1px solid #000;padding:6px 8px;font-size:14px;"
+    th = td + "background:#f2f2f2;font-weight:bold;"
+    head = "".join(f'<th style="{th}">{h}</th>' for h in
+                   ("Unit", "Price", "$/SF", "Sq Ft", "Fl", "Faces",
+                    "Move-in"))
+    trs = []
+    for u in sorted(current, key=lambda x: x["price"]):
+        sq = f"{u['sqft']:,}" if isinstance(u["sqft"], int) else hesc(str(u["sqft"]))
+        unit = hesc(u["unit_number"] or u.get("key", ""))
+        if u.get("fp_image"):
+            unit = f'<a href="{hesc(u["fp_image"])}">{unit}</a>'
+        psf = rent_psf(u)
+        cells = (unit, money(u["price"]), f"${psf}" if psf else "", sq,
+                 hesc(str(u["floor"])), hesc(u.get("facing", "")),
+                 hesc(_avail_disp(u)))
+        trs.append("<tr>" + "".join(f'<td style="{td}">{c}</td>'
+                                    for c in cells) + "</tr>")
+    locs = "".join(
+        f"<li style='margin-bottom:4px'><b>{hesc(u['unit_number'] or '')}"
+        f"</b>: {hesc(u.get('building', ''))} building, floor "
+        f"{hesc(str(u['floor']))}"
+        + (f", faces {hesc(u['facing'])}" if u.get("facing") else "")
+        + (f" — {hesc(u['wing'])}" if u.get("wing") else "") + "</li>"
+        for u in sorted(current, key=lambda x: x["price"]))
+    repo = os.environ.get("GITHUB_REPOSITORY", "")
+    branch = os.environ.get("GITHUB_REF_NAME", "main")
+    chart = map_link = links = ""
+    if repo:
+        chart = (f'<p><img src="https://raw.githubusercontent.com/{repo}/'
+                 f'{branch}/data/price_history.png" '
+                 f'style="max-width:100%;height:auto" alt="Price history"/>'
+                 f"</p>")
+        links = (f'<p style="font-size:14px">'
+                 f'<a href="https://github.com/{repo}/issues">Alert history'
+                 f"</a> &middot; "
+                 f'<a href="{UNITS_APP_URL.split(",")[0]}">Apply portal</a>'
+                 f' &middot; <a href="{PROPERTY_URL}">Listing page</a></p>')
+        if (DATA_DIR / "community_map.png").exists():
+            map_link = (f'<p style="font-size:14px"><a href='
+                        f'"https://raw.githubusercontent.com/{repo}/{branch}'
+                        f'/data/community_map.png">Community site map</a> '
+                        f"(unit numbers are floor + stack)</p>")
+    font = ("font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,"
+            "sans-serif;color:#111;")
+    return (f'<div style="{font}">'
+            f'<h2 style="font-size:17px;margin:0 0 10px">{hesc(title)}</h2>'
+            f"{intro_html}"
+            f'<table style="border-collapse:collapse;border:1px solid #000">'
+            f"<tr>{head}</tr>{''.join(trs)}</table>"
+            f'<p style="font-size:14px;margin:12px 0 4px"><b>Where they are'
+            f"</b></p>"
+            f'<ul style="font-size:14px;margin:0;padding-left:18px">{locs}'
+            f"</ul>{links}{chart}{map_link}</div>")
+
+
+def events_intro_html(events: list[dict]) -> str:
+    items = []
+    for e in events:
+        u = e["unit"]
+        line = (f"<li style='margin-bottom:4px'><b>"
+                f"{EVENT_LABELS[e['type']]}</b>: "
+                f"{hesc(u['unit_number'] or u.get('key', ''))} at "
+                f"{money(u['price'])}, move-in {hesc(_avail_disp(u))}")
+        if e["type"] == "price_change":
+            line += f" (was {money(e['prev_price'])})"
+        items.append(line + "</li>")
+    return ('<ul style="font-size:14px;padding-left:18px">'
+            + "".join(items) + "</ul>")
+
+
 def create_github_issue(title: str, body: str) -> bool:
     repo = os.environ.get("GITHUB_REPOSITORY")
     token = os.environ.get("GITHUB_TOKEN")
@@ -1172,8 +1263,7 @@ def _with_mention(body: str) -> str:
 
 def build_alert(events: list[dict], current: list[dict],
                 site_map: str) -> tuple[str, str]:
-    labels = {"listed": "new", "price_change": "repriced",
-              "delisted": "delisted"}
+    labels = {k: v.lower() for k, v in EVENT_LABELS.items()}
     beds_desc = "/".join(str(b) for b in sorted(TARGET_BEDS)) + "BR"
     counts: dict[str, int] = {}
     for e in events:
@@ -1453,6 +1543,11 @@ def main() -> int:
             + locations_block(list(current.values())) + "\n"
             + map_footer(site_map))
         ALERT_FILE.write_text(f"# {title}\n\n{body}")
+        intro = ('<p style="font-size:14px">Manually triggered test alert. '
+                 "Real alerts look the same and fire only on actual "
+                 "events.</p>")
+        ALERT_HTML.write_text(build_alert_html(
+            title, intro, list(current.values()), site_map))
         create_github_issue(title, body)
         gh_output(notify="true", subject=title)
     elif notify_events:
@@ -1460,6 +1555,9 @@ def main() -> int:
                                   site_map)
         body = _with_mention(body)
         ALERT_FILE.write_text(f"# {title}\n\n{body}")
+        ALERT_HTML.write_text(build_alert_html(
+            title, events_intro_html(notify_events),
+            list(current.values()), site_map))
         create_github_issue(title, body)
         gh_output(notify="true", subject=title)
     else:
