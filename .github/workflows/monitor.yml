@@ -30,6 +30,10 @@ env:
   # SITE_MAP_URL: ""        # optional: pin a community site map image URL
   DEBUG_PAYLOADS: ""        # set to "1" to upload captured portal JSON as artifact
   MENTION_USER: "kofikid4"  # @mentioned on alerts; mentions email reliably. Blank to disable.
+  BROWSER_CHANNEL: "chrome" # system Chrome on the runner (fast); set "" to download Chromium
+  NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+  TEXTBELT_KEY: ${{ secrets.TEXTBELT_KEY }}
+  SMS_TO: ${{ secrets.SMS_TO }}
   TEST_ALERT: ${{ inputs.test_alert }}
   # BROWSER_HEADED: "1"     # uncomment if the portal starts blocking headless
   TARGET_BEDS: "2"            # comma separated, 0 = studio, e.g. "1,2"
@@ -52,11 +56,14 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
+          cache: pip
 
       - name: Install dependencies
-        run: |
-          pip install -r requirements.txt
-          playwright install --with-deps chromium
+        run: pip install -r requirements.txt
+
+      - name: Install bundled Chromium (only when not using system Chrome)
+        if: env.BROWSER_CHANNEL == ''
+        run: playwright install --with-deps chromium
 
       - name: Check availability
         id: monitor
@@ -100,7 +107,33 @@ jobs:
           to: ${{ env.MAIL_TO }}
           from: Apartment Monitor
           subject: ${{ steps.monitor.outputs.subject }}
-          body: file://alert.md
+          html_body: file://alert.html
+
+      - name: Push notification via ntfy (optional, needs NTFY_TOPIC secret)
+        if: steps.monitor.outputs.notify == 'true' && env.NTFY_TOPIC != ''
+        env:
+          SUBJECT: ${{ steps.monitor.outputs.subject }}
+        run: |
+          curl -s \
+            -H "Title: ${SUBJECT}" \
+            -H "Tags: house" \
+            -H "Click: https://github.com/${GITHUB_REPOSITORY}/issues" \
+            -d "Tap to open the alert issue." \
+            "https://ntfy.sh/${NTFY_TOPIC}" > /dev/null
+
+      - name: SMS via Textbelt (optional, needs TEXTBELT_KEY + SMS_TO secrets)
+        if: steps.monitor.outputs.notify == 'true' && env.TEXTBELT_KEY != ''
+        env:
+          SUBJECT: ${{ steps.monitor.outputs.subject }}
+        run: |
+          IFS=',' read -ra NUMS <<< "${SMS_TO}"
+          for n in "${NUMS[@]}"; do
+            curl -s -X POST https://textbelt.com/text \
+              --data-urlencode "phone=${n// /}" \
+              --data-urlencode "message=${SUBJECT}" \
+              --data-urlencode "key=${TEXTBELT_KEY}"
+            echo
+          done
 
       - name: Upload debug snapshots
         if: failure() || env.DEBUG_PAYLOADS == '1' 
