@@ -1,3 +1,7 @@
+<!-- STATUS:START -->
+_First run pending; this section auto-fills with the latest check, the leased-unit history, the price chart, and the site map._
+<!-- STATUS:END -->
+
 # South City Station 2BR monitor
 
 Checks South City Station availability once an hour via GitHub Actions.
@@ -54,10 +58,17 @@ new/delisted events. Every log row records which source it came from.
    the GitHub Mobile app also pushes these instantly. If no issue appears
    at all, open the run's "Check availability" step log; the line starting
    "GitHub issue:" prints the exact API error.
-5. Optional direct email on top of the issues: add repo secrets
-   `MAIL_USERNAME`, `MAIL_PASSWORD` (a Gmail app password, not your login
-   password), and `MAIL_TO`. The email step skips itself when these are
-   absent.
+5. Optional extra channels, each auto-skipped when its secrets are absent.
+   Email: secrets `MAIL_USERNAME`, `MAIL_PASSWORD` (Gmail app password),
+   `MAIL_TO` (comma-separated for multiple recipients). Phone push via the
+   free ntfy app: both people install ntfy, subscribe to a made-up
+   unguessable topic, and store it as secret `NTFY_TOPIC`. Real SMS via
+   Textbelt: buy a prepaid key at textbelt.com, store it as `TEXTBELT_KEY`,
+   and put the destination number(s), comma-separated, in `SMS_TO`. Note
+   carrier email-to-text gateways (vtext, txt.att.net, tmomail) are shut
+   down or dying and are deliberately not used here. Textbelt filters
+   messages containing URLs unless whitelisted, so the SMS body is the
+   subject line only.
 
 ## Where the data lives
 
@@ -138,6 +149,11 @@ column in the CSVs records where each row came from. The whole thing also runs o
 Python if you ever want a residential IP: `pip install -r requirements.txt`,
 `playwright install chromium`, `python scraper/monitor.py`.
 
+Runs use the Chrome preinstalled on GitHub runners (BROWSER_CHANNEL env)
+plus a pip cache, so setup takes seconds instead of the minutes a Chromium
+download would; set BROWSER_CHANNEL to "" to fall back to downloading the
+bundled browser.
+
 GitHub disables cron schedules in repos with no commits for 60 days. Data
 commits normally keep this alive; if the market goes completely quiet for
 two months, GitHub emails first and re-enabling is one click.
@@ -148,7 +164,3 @@ two months, GitHub emails first and re-enabling is one click.
 payload, `TEST_HTML=page.html python scraper/monitor.py` parses a saved
 marketing page, and without a `GITHUB_TOKEN` alerts print to stdout instead
 of opening issues. Useful for debugging parser changes against snapshots.
-
-## Price history
-
-![Price history](data/price_history.png)
