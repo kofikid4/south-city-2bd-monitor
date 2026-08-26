@@ -235,26 +235,36 @@ def fetch_html() -> str:
 
 
 def _enclosing_card(node):
-    """Climb from a $price text node to the smallest element that looks
-    like one complete unit card (exactly one availability date, plus
-    price, beds, and square footage)."""
-    best = None
+    """Find the unit card around a $price text node. Anchor on the smallest
+    ancestor with price + beds + sqft + one availability date, then expand
+    upward only through wrappers that add no additional price or date, so
+    chip lists and images are captured but a section header ('2 Bed from
+    $4,694') or a second card never merges in."""
     cur = node.parent
+    base = None
     for _ in range(12):
         if cur is None or cur.name in ("body", "html", "[document]"):
             break
         text = " ".join(cur.stripped_strings)
-        if len(AVAIL_RE.findall(text)) > 1:
+        if (AVAIL_RE.search(text) and PRICE_RE.search(text)
+                and SQFT_RE.search(text) and BEDS_RE.search(text)):
+            base = cur
             break
-        if (
-            AVAIL_RE.search(text)
-            and PRICE_RE.search(text)
-            and SQFT_RE.search(text)
-            and BEDS_RE.search(text)
-        ):
-            best = cur
         cur = cur.parent
-    return best
+    if base is None:
+        return None
+    n_price = len(PRICE_RE.findall(" ".join(base.stripped_strings)))
+    cur = base.parent
+    for _ in range(6):
+        if cur is None or cur.name in ("body", "html", "[document]"):
+            break
+        t = " ".join(cur.stripped_strings)
+        if (len(AVAIL_RE.findall(t)) != 1
+                or len(PRICE_RE.findall(t)) != n_price):
+            break
+        base = cur
+        cur = cur.parent
+    return base
 
 
 def _stable_sig(text: str) -> str:
@@ -351,6 +361,15 @@ def parse_page(html: str):
         if card is not None and id(card) not in seen:
             seen.add(id(card))
             cards.append(card)
+    # A candidate that contains another candidate is a section wrapper
+    # (happens when a bed-type section holds exactly one card, so the
+    # section itself has one availability date). Keep only innermost cards.
+    inner = []
+    for c in cards:
+        if not any(o is not c and any(p is c for p in o.parents)
+                   for o in cards):
+            inner.append(c)
+    cards = inner
     units = [u for u in (_card_to_unit(c) for c in cards) if u]
 
     page_text = " ".join(soup.stripped_strings)
@@ -394,6 +413,8 @@ def eqweb_units() -> tuple[list[dict], dict, str]:
             raise exc
     units, expected = parse_page(html)
     exp_all = expected.get("All")
+    if exp_all is not None and len(units) > exp_all:
+        units = dedupe_marketing(units)
     if not units and (exp_all is None or exp_all > 0):
         DEBUG_DIR.mkdir(exist_ok=True)
         (DEBUG_DIR / "last_page.html").write_text(html)
@@ -766,6 +787,22 @@ def portal_units() -> tuple[list[dict], str]:
 # -------------------------------------------------- cross-source matching
 
 
+def dedupe_marketing(units: list[dict]) -> list[dict]:
+    """Collapse marketing cards that are content-identical (same beds,
+    sqft, floor, price, date, plan, facing). Featured/carousel modules
+    repeat the same unit; genuinely identical twin listings are rare and
+    the portal remains the source of truth for unit count and identity."""
+    seen, out = set(), []
+    for m in units:
+        key = (m["beds"], m["sqft"], m["floor"], m["price"], m["available"],
+               m.get("fp_id") or m.get("floorplan"), m.get("facing"))
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append(m)
+    return out
+
+
 def enrich_from_eqweb(portal: list[dict], marketing: list[dict]):
     """Match portal units to marketing-page cards and copy over floorplan
     name/image and facing. Match on beds + sqft, scored by move-in date,
@@ -923,7 +960,7 @@ def acquire_units() -> tuple[list[dict], dict, str, str, list[str], int | None]:
                 units, Path(test_texts).read_text().split("\n=====\n"))
         if test_html:
             html = Path(test_html).read_text()
-            marketing, _ = parse_page(html)
+            marketing = dedupe_marketing(parse_page(html)[0])
             mkt_target = sum(1 for m in marketing if m["beds"] in TARGET_BEDS)
             enrich_from_eqweb(units, marketing)
             site_map = site_map or discover_site_map(html)
@@ -945,10 +982,21 @@ def acquire_units() -> tuple[list[dict], dict, str, str, list[str], int | None]:
                          "fell back to equityapartments.com.")
         else:
             if SOURCE == "auto":
-                marketing, _ = parse_page(marketing_html or "")
+                marketing = dedupe_marketing(parse_page(marketing_html or "")[0])
                 if marketing:
                     mkt_target = sum(
                         1 for m in marketing if m["beds"] in TARGET_BEDS)
+                    portal_t = sum(
+                        1 for u in units if u["beds"] in TARGET_BEDS)
+                    if mkt_target > portal_t:
+                        print("Coverage mismatch; marketing cards parsed:")
+                        for m in marketing:
+                            if m["beds"] in TARGET_BEDS:
+                                print(f"  - {m['beds']}bd {m['sqft']}sf "
+                                      f"fl{m['floor']} {money(m['price'])} "
+                                      f"avail {m['available']} "
+                                      f"plan '{m['floorplan']}' "
+                                      f"facing '{m['facing']}'")
                     enrich_from_eqweb(units, marketing)
                     site_map = site_map or discover_site_map(marketing_html)
                 else:
