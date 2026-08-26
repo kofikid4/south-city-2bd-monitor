@@ -1,7 +1,6 @@
 <!-- STATUS:START -->
-## Latest check: 2026-08-26 10:49 AM PDT (source: portal)
+## Latest check: 2026-08-26 11:48 AM PDT (source: portal)
 
-> Warning: Marketing page shows 2 target-bed units but the portal returned 1. The portal URL(s) may cover only part of the property; check eqr-applications.com for sibling building slugs and add them comma-separated to UNITS_APP_URL. Offline detection skipped this run.
 ### Currently available 2-bed units
 
 | Unit | Bldg | Floor | Faces | Price | $/SF | Bd/Ba | Sq Ft | Move-in | Plan |
