@@ -1,5 +1,42 @@
 <!-- STATUS:START -->
-_First run pending; this section auto-fills with the latest check, the leased-unit history, the price chart, and the site map._
+## Latest check: 2026-08-25 10:32 PM PDT (source: portal)
+
+### Currently available 2-bed units
+
+| Unit | Bldg | Floor | Faces | Price | $/SF | Bd/Ba | Sq Ft | Move-in | Plan |
+|---|---|---|---|---|---|---|---|---|---|
+| 01-2049 | West | 2 | East/North | $4,659 | $4.42 | 2/2 | 1,054 | 2026-10-05 | [2 Bedrooms A](https://media.equityapartments.com/image/upload/f_auto,q_auto,b_white/4062-FP-5167-2-2-1054) |
+| 01-3063 | West | 3 | North/West | $5,043 | $3.98 | 2/2 | 1,266 | 2026-08-28 | [2 Bedrooms D](https://media.equityapartments.com/image/upload/f_auto,q_auto,b_white/4062-FP-5171-2-2-1266) |
+
+
+### Leased or delisted since tracking began
+
+| Unit | Last price | $/SF | Sq Ft | First seen | Off market | Days listed | Chg while listed |
+|---|---|---|---|---|---|---|---|
+| 01-2088 | $4,534 | $4.30 | 1054 | 2026-08-17 | 2026-08-26 | 8.2 | -55 |
+
+
+**Where they are** (see site map below):
+- **01-2049**: West building, floor 2, faces East/North — south courtyard cluster by the spa
+- **01-3063**: West building, floor 3, faces North/West — southwest edge along Costco Entry Dr
+
+
+**Building legend**:
+- East building: Stacks 68-121. Block on BART Station Access Rd across McLellan Dr; mail and second fitness center on the inner south side, spa in the SE courtyard.
+- West building: Stacks 14-67. Block bounded by Costco Entry Dr, McLellan Dr, and El Camino Real; leasing center and fitness at the NE corner, spa in the south courtyard, standalone garages 1001-1013 across the north drive.
+- Unit numbers are floor-first: 2049 = floor 2, stack 49. The 01- prefix is an EQR property code, not a building.
+
+### Price history
+
+![Price history](data/price_history.png)
+
+### Community site map
+(unit numbers are floor + stack)
+
+![Community site map](data/community_map_email.jpg)
+
+[Full resolution](data/community_map.png)
+
 <!-- STATUS:END -->
 
 # South City Station 2BR monitor
