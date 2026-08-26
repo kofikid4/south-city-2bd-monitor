@@ -1,12 +1,12 @@
 <!-- STATUS:START -->
-## Latest check: 2026-08-26 6:18 AM PDT (source: portal)
+## Latest check: 2026-08-26 8:54 AM PDT (source: portal)
 
+> Warning: Marketing page shows 2 target-bed units but the portal returned 1. The portal URL(s) may cover only part of the property; check eqr-applications.com for sibling building slugs and add them comma-separated to UNITS_APP_URL. Offline detection skipped this run.
 ### Currently available 2-bed units
 
 | Unit | Bldg | Floor | Faces | Price | $/SF | Bd/Ba | Sq Ft | Move-in | Plan |
 |---|---|---|---|---|---|---|---|---|---|
 | 01-2049 | West | 2 | East/North | $4,694 | $4.45 | 2/2 | 1,054 | 2026-10-05 | [2 Bedrooms A](https://media.equityapartments.com/image/upload/f_auto,q_auto,b_white/4062-FP-5167-2-2-1054) |
-| 01-3063 | West | 3 | North/West | $5,093 | $4.02 | 2/2 | 1,266 | 2026-08-28 | [2 Bedrooms D](https://media.equityapartments.com/image/upload/f_auto,q_auto,b_white/4062-FP-5171-2-2-1266) |
 
 
 ### Leased or delisted since tracking began
@@ -18,7 +18,6 @@
 
 **Where they are** (see site map below):
 - **01-2049**: West building, floor 2, faces East/North — south courtyard cluster by the spa
-- **01-3063**: West building, floor 3, faces North/West — southwest edge along Costco Entry Dr
 
 
 **Building legend**:
