@@ -1,5 +1,5 @@
 {
-  "last_run_utc": "2026-08-26T18:48:29Z",
+  "last_run_utc": "2026-08-26T19:07:42Z",
   "site_map_url": "https://media.equityapartments.com/images/q_auto/f_auto/fl_lossy/4062-Sitemap/community-map",
   "source": "portal",
   "units": {
@@ -16,7 +16,7 @@
       "fp_image": "https://media.equityapartments.com/image/upload/f_auto,q_auto,b_white/4062-FP-5167-2-2-1054",
       "initial_price": 4694,
       "key": "01-2049",
-      "last_seen_utc": "2026-08-26T18:48:29Z",
+      "last_seen_utc": "2026-08-26T19:07:42Z",
       "lease_term_months": "",
       "missing_count": 0,
       "price": 4694,
@@ -26,30 +26,6 @@
       "status": "renovating",
       "unit_number": "01-2049",
       "wing": "south courtyard cluster by the spa"
-    },
-    "01-3063": {
-      "available": "2026-08-28",
-      "baths": "2",
-      "beds": 2,
-      "building": "West",
-      "facing": "North/West",
-      "first_seen_utc": "2026-08-17T20:17:10Z",
-      "floor": "3",
-      "floorplan": "2 Bedrooms D",
-      "fp_id": "5171",
-      "fp_image": "https://media.equityapartments.com/image/upload/f_auto,q_auto,b_white/4062-FP-5171-2-2-1266",
-      "initial_price": 5113,
-      "key": "01-3063",
-      "last_seen_utc": "2026-08-26T13:17:45Z",
-      "lease_term_months": "",
-      "missing_count": 1,
-      "price": 5093,
-      "sig": "",
-      "source": "portal",
-      "sqft": 1266,
-      "status": "renovating",
-      "unit_number": "01-3063",
-      "wing": "southwest edge along Costco Entry Dr"
     }
   },
   "version": 1

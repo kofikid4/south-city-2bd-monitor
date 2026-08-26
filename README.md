@@ -1,5 +1,5 @@
 <!-- STATUS:START -->
-## Latest check: 2026-08-26 11:48 AM PDT (source: portal)
+## Latest check: 2026-08-26 12:08 PM PDT (source: portal)
 
 ### Currently available 2-bed units
 
@@ -12,6 +12,7 @@
 
 | Unit | Last price | $/SF | Sq Ft | First seen | Off market | Days listed | Chg while listed |
 |---|---|---|---|---|---|---|---|
+| 01-3063 | $5,093 | $4.02 | 1266 | 2026-08-17 | 2026-08-26 | 8.7 | -20 |
 | 01-2088 | $4,534 | $4.30 | 1054 | 2026-08-17 | 2026-08-26 | 8.2 | -55 |
 
 
