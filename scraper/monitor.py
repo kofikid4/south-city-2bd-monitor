@@ -58,6 +58,8 @@ TARGET_TERM = int(os.environ.get("TARGET_TERM", "12"))
 # Community site map image; auto-discovered from the marketing page when
 # blank, with the media gallery as the fallback link.
 SITE_MAP_URL = os.environ.get("SITE_MAP_URL", "")
+# Timezone for chart display only; logs stay UTC for clean data.
+CHART_TZ = os.environ.get("CHART_TZ", "America/Los_Angeles")
 GALLERY_URL = PROPERTY_URL + "#/mediaGallery"
 
 TARGET_BEDS = {
@@ -78,6 +80,7 @@ ALERT_FILE = Path("alert.md")
 ALERT_HTML = Path("alert.html")  # bordered-table version for direct email
 EMAIL_MAP = DATA_DIR / "community_map_email.jpg"  # inline-friendly site map
 
+NLJ = chr(10)  # newline joiner
 EVENT_LABELS = {"listed": "New", "price_change": "Repriced",
                 "delisted": "Delisted"}
 
@@ -173,6 +176,21 @@ def try_parse_date(v) -> str:
     if m:
         return norm_date(s)
     return ""
+
+
+def stamp_12h(dt: datetime) -> str:
+    """'2026-08-25 7:05 PM PDT' style, portable (no %-I on Windows)."""
+    return (f"{dt:%Y-%m-%d} {int(dt.strftime('%I'))}:{dt:%M} "
+            f"{dt:%p} {dt:%Z}".strip())
+
+
+def chart_tz():
+    try:
+        from zoneinfo import ZoneInfo
+        return ZoneInfo(CHART_TZ)
+    except Exception as exc:
+        print(f"Timezone {CHART_TZ} unavailable ({exc}); using UTC.")
+        return timezone.utc
 
 
 def gh_output(**kv):
@@ -1101,6 +1119,44 @@ def locations_block(units: list[dict]) -> str:
             + "\n".join(lines) + "\n") if lines else ""
 
 
+def leased_table() -> str:
+    """Markdown table of target-bed units that left the market (the leased
+    proxy), newest first, from offline_log.csv."""
+    if not OFFLINE_LOG.exists():
+        return ""
+    rows = []
+    with open(OFFLINE_LOG, newline="") as f:
+        for r in csv.DictReader(f):
+            try:
+                if int(r.get("beds", "")) in TARGET_BEDS:
+                    rows.append(r)
+            except (TypeError, ValueError):
+                continue
+    if not rows:
+        return ""
+    rows.sort(key=lambda r: r.get("delisted_utc", ""), reverse=True)
+    lines = [
+        "| Unit | Last price | $/SF | Sq Ft | First seen | Off market "
+        "| Days listed | Chg while listed |",
+        "|---|---|---|---|---|---|---|---|",
+    ]
+    for r in rows:
+        chg = r.get("price_change_while_listed", "")
+        if chg not in ("", None):
+            try:
+                chg = f"{int(chg):+,}"
+            except ValueError:
+                pass
+        psf = r.get("last_rent_psf", "")
+        lines.append(
+            f"| {r.get('unit_number') or r.get('unit_key', '')} "
+            f"| {money(r.get('last_price'))} | {'$' + psf if psf else ''} "
+            f"| {r.get('sqft', '')} | {str(r.get('first_seen_utc', ''))[:10]} "
+            f"| {str(r.get('delisted_utc', ''))[:10]} "
+            f"| {r.get('days_listed', '')} | {chg} |")
+    return "\n".join(lines) + "\n"
+
+
 def _unit_line(u: dict) -> str:
     bits = [u["unit_number"] or u.get("key", "?")]
     if u.get("building"):
@@ -1383,6 +1439,8 @@ def generate_chart(state: dict) -> str:
         print(f"Chart skipped (matplotlib unavailable: {exc})")
         return ""
 
+    tz = chart_tz()
+
     series: dict[str, dict] = {}
 
     def bucket(key, sqft):
@@ -1398,8 +1456,9 @@ def generate_chart(state: dict) -> str:
                     if int(r["beds"]) not in TARGET_BEDS:
                         continue
                     s = bucket(r["unit_key"], int(r["sqft"] or 0))
-                    s["pts"].append((parse_iso(r["logged_utc"]),
-                                     int(r["price"])))
+                    s["pts"].append(
+                        (parse_iso(r["logged_utc"]).astimezone(tz),
+                         int(r["price"])))
                 except (KeyError, TypeError, ValueError):
                     continue
     if OFFLINE_LOG.exists():
@@ -1410,12 +1469,12 @@ def generate_chart(state: dict) -> str:
                         continue
                     if r["unit_key"] in series:
                         series[r["unit_key"]]["end"] = (
-                            parse_iso(r["delisted_utc"]),
+                            parse_iso(r["delisted_utc"]).astimezone(tz),
                             int(r["last_price"]))
                 except (KeyError, TypeError, ValueError):
                     continue
 
-    nowdt = now_utc()
+    nowdt = now_utc().astimezone(tz)
     for key, s in series.items():
         if s["end"] is not None:
             s["pts"].append(s["end"])
@@ -1447,7 +1506,7 @@ def generate_chart(state: dict) -> str:
 
     beds_desc = "/".join(str(b) for b in sorted(TARGET_BEDS))
     ax1.set_title(f"{PROPERTY_NAME} {beds_desc}BR asking rents "
-                  f"(X = delisted) — updated {nowdt:%Y-%m-%d %H:%M} UTC")
+                  f"(X = delisted) — updated {stamp_12h(nowdt)}")
     ax1.set_ylabel("Asking rent ($/mo)")
     ax1.yaxis.set_major_formatter(StrMethodFormatter("${x:,.0f}"))
     ax1.grid(alpha=0.3)
@@ -1455,14 +1514,71 @@ def generate_chart(state: dict) -> str:
     ax2.set_ylabel("$/SF/mo")
     ax2.yaxis.set_major_formatter(StrMethodFormatter("${x:,.2f}"))
     ax2.grid(alpha=0.3)
-    loc = mdates.AutoDateLocator()
+    loc = mdates.AutoDateLocator(tz=tz)
     ax2.xaxis.set_major_locator(loc)
-    ax2.xaxis.set_major_formatter(mdates.ConciseDateFormatter(loc))
+    fmts = ["%Y", "%b", "%b %d", "%I %p", "%I:%M %p", "%I:%M:%S %p"]
+    zfmts = ["", "%b %Y", "%b %d", "%I %p", "%I:%M %p", "%I:%M %p"]
+    offs = ["", "%Y", "%b %Y", "%b %d, %Y", "%b %d, %Y", "%b %d, %Y %I:%M %p"]
+    ax2.xaxis.set_major_formatter(mdates.ConciseDateFormatter(
+        loc, tz=tz, formats=fmts, zero_formats=zfmts, offset_formats=offs))
     fig.tight_layout()
     out = DATA_DIR / "price_history.png"
     fig.savefig(out, dpi=150)
     plt.close(fig)
     return str(out)
+
+
+README = Path("README.md")
+S_START = "<!-- STATUS:START -->"
+S_END = "<!-- STATUS:END -->"
+
+
+def build_status_md(current: list[dict], ts_local: str, source: str,
+                    warnings: list[str]) -> str:
+    parts = [f"## Latest check: {ts_local} (source: {source})", ""]
+    for w in warnings:
+        parts.append(f"> Warning: {w}")
+    beds_desc = "/".join(str(b) for b in sorted(TARGET_BEDS))
+    parts += [f"### Currently available {beds_desc}-bed units", "",
+              units_table(current), ""]
+    lt = leased_table()
+    if lt:
+        parts += ["### Leased or delisted since tracking began", "", lt, ""]
+    lb = locations_block(current)
+    if lb:
+        parts += [lb, ""]
+    legend = load_legend()
+    if legend:
+        parts.append("**Building legend**:")
+        for k in sorted(legend):
+            parts.append(f"- {legend[k]}" if k.lower() == "note"
+                         else f"- {k} building: {legend[k]}")
+        parts.append("")
+    parts += ["### Price history", "",
+              "![Price history](data/price_history.png)", ""]
+    if (DATA_DIR / "community_map_email.jpg").exists():
+        parts += ["### Community site map",
+                  "(unit numbers are floor + stack)", "",
+                  "![Community site map](data/community_map_email.jpg)", "",
+                  "[Full resolution](data/community_map.png)", ""]
+    elif (DATA_DIR / "community_map.png").exists():
+        parts += ["![Community site map](data/community_map.png)", ""]
+    return NLJ.join(parts)
+
+
+def update_readme(status_md: str):
+    block = f"{S_START}{NLJ}{status_md}{NLJ}{S_END}"
+    if README.exists():
+        txt = README.read_text()
+        if S_START in txt and S_END in txt:
+            pre = txt.split(S_START)[0]
+            post = txt.split(S_END, 1)[1]
+            txt = pre + block + post
+        else:
+            txt = block + NLJ + NLJ + txt
+    else:
+        txt = block + NLJ
+    README.write_text(txt)
 
 
 # ------------------------------------------------------------------- main
@@ -1559,6 +1675,9 @@ def main() -> int:
     backfill_csv_from_state(state)
     ensure_email_map()
     chart_path = generate_chart(state)
+    ts_local = stamp_12h(now_utc().astimezone(chart_tz()))
+    update_readme(build_status_md(list(current.values()), ts_local, source,
+                                  warnings))
 
     test_alert = os.environ.get("TEST_ALERT", "").lower() in ("1", "true")
     notify_events = [e for e in events if e["type"] in NOTIFY_EVENTS]
@@ -1606,8 +1725,12 @@ def main() -> int:
     else:
         md.append("No changes this run.")
     md += ["", f"Currently listed {beds_desc}-bed units:", "",
-           units_table(list(current.values())), "",
-           locations_block(list(current.values())), "", map_footer(site_map)]
+           units_table(list(current.values()))]
+    lt = leased_table()
+    if lt:
+        md += ["", "Leased or delisted since tracking began:", "", lt]
+    md += ["", locations_block(list(current.values())), "",
+           map_footer(site_map)]
     repo = os.environ.get("GITHUB_REPOSITORY")
     if chart_path and repo:
         branch = os.environ.get("GITHUB_REF_NAME", "main")
