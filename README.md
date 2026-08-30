@@ -1,23 +1,25 @@
 <!-- STATUS:START -->
-## Latest check: 2026-08-29 11:42 PM PDT (source: portal)
+## Latest check: 2026-08-30 5:55 AM PDT (source: portal)
 
+> Warning: Marketing page yielded no unit cards in-browser (likely a bot check); enrichment skipped this run.
 ### Currently available 2-bed units
 
 | Unit | Bldg | Floor | Faces | Price | $/SF | Bd/Ba | Sq Ft | Move-in | Plan |
 |---|---|---|---|---|---|---|---|---|---|
-| 01-2049 | West | 2 | East/North | $4,814 | $4.57 | 2/2 | 1,054 | 2026-10-05 | [2 Bedrooms A](https://media.equityapartments.com/image/upload/f_auto,q_auto,b_white/4062-FP-5167-2-2-1054) |
+| 01-2049 | West | 2 |  | $4,839 | $4.59 | 2/2 | 1,054 | 2026-10-05 |  |
 
 
 ### Leased or delisted since tracking began
 
 | Unit | Last price | $/SF | Sq Ft | First seen | Off market | Days listed | Chg while listed |
 |---|---|---|---|---|---|---|---|
+| 01-2104 | $4,790 | $4.54 | 1054 | 2026-08-30 | 2026-08-30 | 0.0 | +0 |
 | 01-3063 | $5,093 | $4.02 | 1266 | 2026-08-17 | 2026-08-26 | 8.7 | -20 |
 | 01-2088 | $4,534 | $4.30 | 1054 | 2026-08-17 | 2026-08-26 | 8.2 | -55 |
 
 
 **Where they are** (see site map below):
-- **01-2049**: West building, floor 2, faces East/North — south courtyard cluster by the spa
+- **01-2049**: West building, floor 2 — south courtyard cluster by the spa
 
 
 **Building legend**:
