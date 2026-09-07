@@ -1,11 +1,11 @@
 <!-- STATUS:START -->
-## Latest check: 2026-09-06 9:45 PM PDT (source: portal)
+## Latest check: 2026-09-07 3:21 AM PDT (source: portal)
 
 ### Currently available 2-bed units
 
 | Unit | Bldg | Floor | Faces | Price | $/SF | Bd/Ba | Sq Ft | Move-in | Plan |
 |---|---|---|---|---|---|---|---|---|---|
-| 01-2049 | West | 2 | East/North | $4,964 | $4.71 | 2/2 | 1,054 | 2026-10-05 | [2 Bedrooms A](https://media.equityapartments.com/image/upload/f_auto,q_auto,b_white/4062-FP-5167-2-2-1054) |
+| 01-2049 | West | 2 | East/North | $4,984 | $4.73 | 2/2 | 1,054 | 2026-10-05 | [2 Bedrooms A](https://media.equityapartments.com/image/upload/f_auto,q_auto,b_white/4062-FP-5167-2-2-1054) |
 
 
 ### Leased or delisted since tracking began
