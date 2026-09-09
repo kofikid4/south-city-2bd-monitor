@@ -1,10 +1,11 @@
 <!-- STATUS:START -->
-## Latest check: 2026-09-09 11:39 AM PDT (source: portal)
+## Latest check: 2026-09-09 2:43 PM PDT (source: portal)
 
 ### Currently available 2-bed units
 
 | Unit | Bldg | Floor | Faces | Price | $/SF | Bd/Ba | Sq Ft | Move-in | Plan |
 |---|---|---|---|---|---|---|---|---|---|
+| 01-2109 | East | 2 |  | $4,893 | $4.44 | 2/2 | 1,103 | 2026-10-27 |  |
 | 01-2049 | West | 2 | East/North | $5,084 | $4.82 | 2/2 | 1,054 | 2026-10-05 | [2 Bedrooms A](https://media.equityapartments.com/image/upload/f_auto,q_auto,b_white/4062-FP-5167-2-2-1054) |
 
 
@@ -18,6 +19,7 @@
 
 
 **Where they are** (see site map below):
+- **01-2109**: East building, floor 2 — southeast corner
 - **01-2049**: West building, floor 2, faces East/North — south courtyard cluster by the spa
 
 
