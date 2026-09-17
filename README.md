@@ -1,5 +1,5 @@
 <!-- STATUS:START -->
-## Latest check: 2026-09-17 6:30 AM PDT (source: portal)
+## Latest check: 2026-09-17 11:16 AM PDT (source: portal)
 
 ### Currently available 2-bed units
 
