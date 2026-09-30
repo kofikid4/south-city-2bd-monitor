@@ -1,5 +1,5 @@
 <!-- STATUS:START -->
-## Latest check: 2026-09-29 1:49 PM PDT (source: portal)
+## Latest check: 2026-09-29 5:29 PM PDT (source: portal)
 
 > Warning: Marketing page yielded no unit cards in-browser (likely a bot check); enrichment skipped this run.
 ### Currently available 2-bed units
@@ -8,7 +8,7 @@
 |---|---|---|---|---|---|---|---|---|---|
 | 01-2049 | West | 2 |  | $4,694 | $4.45 | 2/2 | 1,054 | 2026-10-08 |  |
 | 01-2109 | East | 2 |  | $4,798 | $4.35 | 2/2 | 1,103 | 2026-10-26 |  |
-| 01-1030 | West | 1 |  | $4,933 | $4.35 | 2/2 | 1,134 | 2026-10-07 |  |
+| 01-1030 | West | 1 |  | $4,933 | $4.35 | 2/2 | 1,134 | 2026-10-08 |  |
 
 
 ### Leased or delisted since tracking began
