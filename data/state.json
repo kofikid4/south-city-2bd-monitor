@@ -1,5 +1,5 @@
 {
-  "last_run_utc": "2026-10-01T19:33:02Z",
+  "last_run_utc": "2026-10-01T23:53:48Z",
   "site_map_url": "https://media.equityapartments.com/images/q_auto/f_auto/fl_lossy/4062-Sitemap/community-map",
   "source": "portal",
   "units": {
@@ -16,7 +16,7 @@
       "fp_image": "",
       "initial_price": 4993,
       "key": "01-1030",
-      "last_seen_utc": "2026-10-01T19:33:02Z",
+      "last_seen_utc": "2026-10-01T23:53:48Z",
       "lease_term_months": "",
       "missing_count": 0,
       "price": 4953,
@@ -28,7 +28,7 @@
       "wing": "inner south wing, garage-adjacent"
     },
     "01-2049": {
-      "available": "2026-10-08",
+      "available": "2026-10-05",
       "baths": "2",
       "beds": 2,
       "building": "West",
@@ -40,7 +40,7 @@
       "fp_image": "",
       "initial_price": 4694,
       "key": "01-2049",
-      "last_seen_utc": "2026-10-01T19:33:02Z",
+      "last_seen_utc": "2026-10-01T23:53:48Z",
       "lease_term_months": "",
       "missing_count": 0,
       "price": 4709,
@@ -64,7 +64,7 @@
       "fp_image": "",
       "initial_price": 4893,
       "key": "01-2109",
-      "last_seen_utc": "2026-10-01T19:33:02Z",
+      "last_seen_utc": "2026-10-01T23:53:48Z",
       "lease_term_months": "",
       "missing_count": 0,
       "price": 4823,
