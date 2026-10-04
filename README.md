@@ -1,14 +1,14 @@
 <!-- STATUS:START -->
-## Latest check: 2026-10-03 11:51 PM PDT (source: portal)
+## Latest check: 2026-10-04 6:13 AM PDT (source: portal)
 
 ### Currently available 2-bed units
 
 | Unit | Bldg | Floor | Faces | Price | $/SF | Bd/Ba | Sq Ft | Move-in | Plan |
 |---|---|---|---|---|---|---|---|---|---|
-| 01-2049 | West | 2 | East/North | $4,684 | $4.44 | 2/2 | 1,054 | 2026-10-05 | [2 Bedrooms A](https://media.equityapartments.com/image/upload/f_auto,q_auto,b_white/4062-FP-5167-2-2-1054) |
-| 01-4017 | West | 4 |  | $4,738 | $4.50 | 2/2 | 1,054 | 2026-10-09 |  |
-| 01-2109 | East | 2 | West | $4,778 | $4.33 | 2/2 | 1,103 | 2026-10-26 | [2 Bedrooms B](https://media.equityapartments.com/image/upload/f_auto,q_auto,b_white/4062-FP-5168-2-2-1103) |
-| 01-1030 | West | 1 | West | $4,923 | $4.34 | 2/2 | 1,134 | 2026-10-08 | [2 Bedrooms C](https://media.equityapartments.com/image/upload/f_auto,q_auto,b_white/4062-FP-5170-2-2-1134) |
+| 01-2049 | West | 2 | East/North | $4,664 | $4.43 | 2/2 | 1,054 | 2026-10-05 | [2 Bedrooms A](https://media.equityapartments.com/image/upload/f_auto,q_auto,b_white/4062-FP-5167-2-2-1054) |
+| 01-4017 | West | 4 | East | $4,718 | $4.48 | 2/2 | 1,054 | 2026-10-09 | [2 Bedrooms A](https://media.equityapartments.com/image/upload/f_auto,q_auto,b_white/4062-FP-5167-2-2-1054) |
+| 01-2109 | East | 2 | West | $4,718 | $4.28 | 2/2 | 1,103 | 2026-10-26 | [2 Bedrooms B](https://media.equityapartments.com/image/upload/f_auto,q_auto,b_white/4062-FP-5168-2-2-1103) |
+| 01-1030 | West | 1 | West | $4,883 | $4.31 | 2/2 | 1,134 | 2026-10-08 | [2 Bedrooms C](https://media.equityapartments.com/image/upload/f_auto,q_auto,b_white/4062-FP-5170-2-2-1134) |
 
 
 ### Leased or delisted since tracking began
@@ -22,7 +22,7 @@
 
 **Where they are** (see site map below):
 - **01-2049**: West building, floor 2, faces East/North — south courtyard cluster by the spa
-- **01-4017**: West building, floor 4 — north side, by the leasing center and garage row
+- **01-4017**: West building, floor 4, faces East — north side, by the leasing center and garage row
 - **01-2109**: East building, floor 2, faces West — southeast corner
 - **01-1030**: West building, floor 1, faces West — inner south wing, garage-adjacent
 
