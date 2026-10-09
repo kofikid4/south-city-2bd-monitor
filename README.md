@@ -1,28 +1,30 @@
 <!-- STATUS:START -->
-## Latest check: 2026-10-08 7:12 PM PDT (source: portal)
+## Latest check: 2026-10-09 2:07 AM PDT (source: portal)
 
+> Warning: Marketing page yielded no unit cards in-browser (likely a bot check); enrichment skipped this run.
 ### Currently available 2-bed units
 
 | Unit | Bldg | Floor | Faces | Price | $/SF | Bd/Ba | Sq Ft | Move-in | Plan |
 |---|---|---|---|---|---|---|---|---|---|
-| 01-2049 | West | 2 | East/North | $4,664 | $4.43 | 2/2 | 1,054 | 2026-10-08 | [2 Bedrooms A](https://media.equityapartments.com/image/upload/f_auto,q_auto,b_white/4062-FP-5167-2-2-1054) |
-| 01-2109 | East | 2 | West | $4,718 | $4.28 | 2/2 | 1,103 | 2026-10-26 | [2 Bedrooms B](https://media.equityapartments.com/image/upload/f_auto,q_auto,b_white/4062-FP-5168-2-2-1103) |
-| 01-1030 | West | 1 | West | $4,883 | $4.31 | 2/2 | 1,134 | 2026-10-08 | [2 Bedrooms C](https://media.equityapartments.com/image/upload/f_auto,q_auto,b_white/4062-FP-5170-2-2-1134) |
+| 01-2049 | West | 2 |  | $4,664 | $4.43 | 2/2 | 1,054 | 2026-10-09 |  |
+| 01-2109 | East | 2 |  | $4,718 | $4.28 | 2/2 | 1,103 | 2026-10-26 |  |
+| 01-1030 | West | 1 |  | $4,883 | $4.31 | 2/2 | 1,134 | 2026-10-09 |  |
 
 
 ### Leased or delisted since tracking began
 
 | Unit | Last price | $/SF | Sq Ft | First seen | Off market | Days listed | Chg while listed |
 |---|---|---|---|---|---|---|---|
+| 01-4017 | $4,718 | $4.48 | 1054 | 2026-10-03 | 2026-10-09 | 5.0 | -20 |
 | 01-2104 | $4,790 | $4.54 | 1054 | 2026-08-30 | 2026-08-30 | 0.0 | +0 |
 | 01-3063 | $5,093 | $4.02 | 1266 | 2026-08-17 | 2026-08-26 | 8.7 | -20 |
 | 01-2088 | $4,534 | $4.30 | 1054 | 2026-08-17 | 2026-08-26 | 8.2 | -55 |
 
 
 **Where they are** (see site map below):
-- **01-2049**: West building, floor 2, faces East/North — south courtyard cluster by the spa
-- **01-2109**: East building, floor 2, faces West — southeast corner
-- **01-1030**: West building, floor 1, faces West — inner south wing, garage-adjacent
+- **01-2049**: West building, floor 2 — south courtyard cluster by the spa
+- **01-2109**: East building, floor 2 — southeast corner
+- **01-1030**: West building, floor 1 — inner south wing, garage-adjacent
 
 
 **Building legend**:
