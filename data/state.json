@@ -1,10 +1,10 @@
 {
-  "last_run_utc": "2026-11-05T06:49:53Z",
+  "last_run_utc": "2026-11-05T15:29:27Z",
   "site_map_url": "https://media.equityapartments.com/images/q_auto/f_auto/fl_lossy/4062-Sitemap/community-map",
   "source": "portal",
   "units": {
     "01-2049": {
-      "available": "2026-11-04",
+      "available": "2026-11-05",
       "baths": "2",
       "beds": 2,
       "building": "West",
@@ -16,10 +16,10 @@
       "fp_image": "",
       "initial_price": 4904,
       "key": "01-2049",
-      "last_seen_utc": "2026-11-05T06:49:53Z",
+      "last_seen_utc": "2026-11-05T15:29:27Z",
       "lease_term_months": "",
       "missing_count": 0,
-      "price": 4749,
+      "price": 4739,
       "sig": "",
       "source": "portal",
       "sqft": 1054,
@@ -28,7 +28,7 @@
       "wing": "south courtyard cluster by the spa"
     },
     "01-2109": {
-      "available": "2026-11-04",
+      "available": "2026-11-05",
       "baths": "2",
       "beds": 2,
       "building": "East",
@@ -40,10 +40,10 @@
       "fp_image": "",
       "initial_price": 4893,
       "key": "01-2109",
-      "last_seen_utc": "2026-11-05T06:49:53Z",
+      "last_seen_utc": "2026-11-05T15:29:27Z",
       "lease_term_months": "",
       "missing_count": 0,
-      "price": 4803,
+      "price": 4793,
       "sig": "",
       "source": "portal",
       "sqft": 1103,
