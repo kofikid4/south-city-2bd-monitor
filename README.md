@@ -1,5 +1,5 @@
 <!-- STATUS:START -->
-## Latest check: 2026-11-10 9:52 AM PST (source: portal)
+## Latest check: 2026-11-10 3:25 PM PST (source: portal)
 
 > Warning: Marketing page yielded no unit cards in-browser (likely a bot check); enrichment skipped this run.
 ### Currently available 2-bed units
@@ -8,6 +8,7 @@
 |---|---|---|---|---|---|---|---|---|---|
 | 01-2049 | West | 2 |  | $4,689 | $4.45 | 2/2 | 1,054 | 2026-11-10 |  |
 | 01-2109 | East | 2 |  | $4,743 | $4.30 | 2/2 | 1,103 | 2026-11-10 |  |
+| 01-3030 | West | 3 |  | $5,032 | $4.44 | 2/2 | 1,134 | 2027-01-15 |  |
 
 
 ### Leased or delisted since tracking began
@@ -25,6 +26,7 @@
 **Where they are** (see site map below):
 - **01-2049**: West building, floor 2 — south courtyard cluster by the spa
 - **01-2109**: East building, floor 2 — southeast corner
+- **01-3030**: West building, floor 3 — inner south wing, garage-adjacent
 
 
 **Building legend**:
