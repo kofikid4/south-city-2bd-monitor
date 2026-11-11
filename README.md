@@ -1,14 +1,15 @@
 <!-- STATUS:START -->
-## Latest check: 2026-11-11 7:15 AM PST (source: portal)
+## Latest check: 2026-11-11 2:00 PM PST (source: portal)
 
+> Warning: Marketing page yielded no unit cards in-browser (likely a bot check); enrichment skipped this run.
 ### Currently available 2-bed units
 
 | Unit | Bldg | Floor | Faces | Price | $/SF | Bd/Ba | Sq Ft | Move-in | Plan |
 |---|---|---|---|---|---|---|---|---|---|
-| 01-2049 | West | 2 | East/North | $4,664 | $4.43 | 2/2 | 1,054 | 2026-11-11 | [2 Bedrooms A](https://media.equityapartments.com/image/upload/f_auto,q_auto,b_white/4062-FP-5167-2-2-1054) |
-| 01-2109 | East | 2 | West | $4,718 | $4.28 | 2/2 | 1,103 | 2026-11-11 | [2 Bedrooms B](https://media.equityapartments.com/image/upload/f_auto,q_auto,b_white/4062-FP-5168-2-2-1103) |
-| 01-4030 | West | 4 | West | $4,875 | $4.30 | 2/2 | 1,134 | 2026-11-21 | [2 Bedrooms C](https://media.equityapartments.com/image/upload/f_auto,q_auto,b_white/4062-FP-5170-2-2-1134) |
-| 01-3030 | West | 3 | West | $5,002 | $4.41 | 2/2 | 1,134 | 2027-01-14 | [2 Bedrooms C](https://media.equityapartments.com/image/upload/f_auto,q_auto,b_white/4062-FP-5170-2-2-1134) |
+| 01-2049 | West | 2 |  | $4,664 | $4.43 | 2/2 | 1,054 | 2026-11-11 |  |
+| 01-2109 | East | 2 |  | $4,718 | $4.28 | 2/2 | 1,103 | 2026-11-11 |  |
+| 01-4030 | West | 4 |  | $4,875 | $4.30 | 2/2 | 1,134 | 2026-11-21 |  |
+| 01-3030 | West | 3 |  | $5,002 | $4.41 | 2/2 | 1,134 | 2027-01-14 |  |
 
 
 ### Leased or delisted since tracking began
@@ -24,10 +25,10 @@
 
 
 **Where they are** (see site map below):
-- **01-2049**: West building, floor 2, faces East/North — south courtyard cluster by the spa
-- **01-2109**: East building, floor 2, faces West — southeast corner
-- **01-4030**: West building, floor 4, faces West — inner south wing, garage-adjacent
-- **01-3030**: West building, floor 3, faces West — inner south wing, garage-adjacent
+- **01-2049**: West building, floor 2 — south courtyard cluster by the spa
+- **01-2109**: East building, floor 2 — southeast corner
+- **01-4030**: West building, floor 4 — inner south wing, garage-adjacent
+- **01-3030**: West building, floor 3 — inner south wing, garage-adjacent
 
 
 **Building legend**:
