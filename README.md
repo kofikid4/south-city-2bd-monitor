@@ -1,19 +1,20 @@
 <!-- STATUS:START -->
-## Latest check: 2026-11-16 8:30 PM PST (source: portal)
+## Latest check: 2026-11-17 6:27 AM PST (source: portal)
 
 > Warning: Marketing page yielded no unit cards in-browser (likely a bot check); enrichment skipped this run.
 ### Currently available 2-bed units
 
 | Unit | Bldg | Floor | Faces | Price | $/SF | Bd/Ba | Sq Ft | Move-in | Plan |
 |---|---|---|---|---|---|---|---|---|---|
-| 01-4030 | West | 4 |  | $4,895 | $4.32 | 2/2 | 1,134 | 2026-11-21 |  |
-| 01-3030 | West | 3 |  | $4,947 | $4.36 | 2/2 | 1,134 | 2027-01-14 |  |
+| 01-4030 | West | 4 |  | $4,910 | $4.33 | 2/2 | 1,134 | 2026-11-21 |  |
+| 01-3030 | West | 3 |  | $4,987 | $4.40 | 2/2 | 1,134 | 2027-01-14 |  |
 
 
 ### Leased or delisted since tracking began
 
 | Unit | Last price | $/SF | Sq Ft | First seen | Off market | Days listed | Chg while listed |
 |---|---|---|---|---|---|---|---|
+| 01-2049 | $4,584 | $4.35 | 1054 | 2026-10-15 | 2026-11-17 | 32.7 | -320 |
 | 01-2109 | $4,713 | $4.27 | 1103 | 2026-09-09 | 2026-11-16 | 66.8 | -180 |
 | 01-1030 | $4,833 | $4.26 | 1134 | 2026-09-23 | 2026-10-10 | 16.2 | -160 |
 | 01-2049 | $4,614 | $4.38 | 1054 | 2026-08-17 | 2026-10-10 | 53.0 | -80 |
