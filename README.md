@@ -1,5 +1,5 @@
 <!-- STATUS:START -->
-## Latest check: 2026-11-18 1:59 PM PST (source: portal)
+## Latest check: 2026-11-18 7:32 PM PST (source: portal)
 
 > Warning: Marketing page yielded no unit cards in-browser (likely a bot check); enrichment skipped this run.
 ### Currently available 2-bed units
