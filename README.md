@@ -1,5 +1,5 @@
 <!-- STATUS:START -->
-## Latest check: 2026-11-19 5:13 AM PST (source: portal)
+## Latest check: 2026-11-19 1:37 PM PST (source: portal)
 
 > Warning: Marketing page yielded no unit cards in-browser (likely a bot check); enrichment skipped this run.
 ### Currently available 2-bed units
@@ -8,6 +8,7 @@
 |---|---|---|---|---|---|---|---|---|---|
 | 01-4030 | West | 4 |  | $4,940 | $4.36 | 2/2 | 1,134 | 2026-11-23 |  |
 | 01-3030 | West | 3 |  | $5,007 | $4.42 | 2/2 | 1,134 | 2027-01-14 |  |
+| 01-1027 | West | 1 |  | $5,130 | $4.87 | 2/2 | 1,054 | 2026-12-25 |  |
 
 
 ### Leased or delisted since tracking began
@@ -27,6 +28,7 @@
 **Where they are** (see site map below):
 - **01-4030**: West building, floor 4 — inner south wing, garage-adjacent
 - **01-3030**: West building, floor 3 — inner south wing, garage-adjacent
+- **01-1027**: West building, floor 1 — inner south wing, garage-adjacent
 
 
 **Building legend**:
