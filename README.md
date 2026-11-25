@@ -1,5 +1,5 @@
 <!-- STATUS:START -->
-## Latest check: 2026-11-25 6:31 AM PST (source: portal)
+## Latest check: 2026-11-25 3:39 PM PST (source: portal)
 
 > Warning: Marketing page yielded no unit cards in-browser (likely a bot check); enrichment skipped this run.
 ### Currently available 2-bed units
@@ -14,6 +14,7 @@
 
 | Unit | Last price | $/SF | Sq Ft | First seen | Off market | Days listed | Chg while listed |
 |---|---|---|---|---|---|---|---|
+| 01-4030 | $4,930 | $4.35 | 1134 | 2026-11-11 | 2026-11-25 | 13.9 | +15 |
 | 01-2049 | $4,584 | $4.35 | 1054 | 2026-10-15 | 2026-11-17 | 32.7 | -320 |
 | 01-2109 | $4,713 | $4.27 | 1103 | 2026-09-09 | 2026-11-16 | 66.8 | -180 |
 | 01-1030 | $4,833 | $4.26 | 1134 | 2026-09-23 | 2026-10-10 | 16.2 | -160 |
